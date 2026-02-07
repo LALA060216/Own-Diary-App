@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # diaryapp
 
 A new Flutter project.
@@ -14,3 +15,6 @@ A few resources to get you started if this is your first Flutter project:
 For help getting started with Flutter development, view the
 [online documentation](https://docs.flutter.dev/), which offers tutorials,
 samples, guidance on mobile development, and a full API reference.
+=======
+# Own-Diary-App
+>>>>>>> 7ee88eea3ea0689bf28ac76f172709e0e3b4b392
