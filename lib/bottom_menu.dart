@@ -19,8 +19,6 @@ class _Bottommenustate extends State<BottomMenu>{
     ProfilePage()
   ];
 
-  final double iconsize = 35; 
-  final double aiconsize = 35;
 
   Widget _navbutton({
     required int index,
