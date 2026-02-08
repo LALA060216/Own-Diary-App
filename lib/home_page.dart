@@ -9,7 +9,7 @@ class Homepage extends StatelessWidget{
       backgroundColor: Color(0xfff5f5f5),
       appBar: AppBar(
         shadowColor: Color(0xffEDEADE),
-        elevation: 5,
+        elevation: 2,
         backgroundColor: Color(0xfffffaf0),
         
         title: Text(

@@ -9,7 +9,7 @@ class ProfilePage extends StatelessWidget{
       appBar: AppBar(
         backgroundColor: Color(0xfffffaf0),
         shadowColor: Color(0xffEDEADE),
-        elevation: 5,
+        elevation: 2,
         title: Text(
           'Profile', 
           style: TextStyle(
