@@ -85,8 +85,8 @@ class _Bottommenustate extends State<BottomMenu>{
 
                   _navbutton(
                     index: 3,
-                    icon: Icons.person_2_outlined,
-                    activeIcon: Icons.person_2
+                    icon: Icons.person_outlined,
+                    activeIcon: Icons.person
                   ),
                 ],
               
