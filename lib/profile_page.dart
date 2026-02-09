@@ -24,7 +24,7 @@ class ProfilePage extends StatelessWidget{
               IconButton(
                 onPressed: null, 
                 icon: Icon(
-                  Icons.settings,
+                  Icons.settings_outlined,
                   size: 28,
                 ),
               )
@@ -38,65 +38,13 @@ class ProfilePage extends StatelessWidget{
           profile_pic_and_username_display(),
           Divider(
             height: 1,
-            thickness: 1,
+            thickness: 2,
             color: Color(0xffe0e0e0),
           ),
-          SizedBox(height: 35),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              Card(
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(15),
-                ),
-                elevation: 1,
-                child: 
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(15),
-                    child: Container(
-                      width: 130,
-                      height: 50,
-                      color: Color(0xffF9F6EE),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: [
-                          Icon(
-                            Icons.star_rate,
-                            color: Colors.black,
-                          ),
-                          Text(
-                            "Streak:",
-                            style: TextStyle(
-                              color: Colors.black,
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          Text(
-                            "0",
-                            style: TextStyle(
-                              color: Colors.black,
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-              ),
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(15),
-                    child: Container(
-                      width: 130,
-                      height: 50,
-                      color: Colors.green,
-                    ),
-                  )
-                ],
-              ),
+          SizedBox(height: 30),
+          streak_and_post(),
+          SizedBox(height: 30),
+          AI_overview(),
         ],
       )
     
@@ -104,9 +52,133 @@ class ProfilePage extends StatelessWidget{
     );
   }
 
+
+
+
+  Container AI_overview() {
+    return Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(15),
+            color: Color(0xffF9F6EE),
+            boxShadow: [
+              BoxShadow(
+                color: Color(0xffddd6e1),
+                blurRadius: 4,
+                offset: Offset(0, 1),
+              ),
+            ],
+          ),
+          height: 350,
+          width: 308,
+          child: Column(
+            children: [
+              Text(
+                "AI Overview:",
+                style: TextStyle(
+                  fontSize: 16,
+                  color: Colors.black87,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+        );
+  }
+
+  Row streak_and_post() {
+    return Row(
+          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Card(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(15),
+              ),
+              elevation: 0.5,
+              child: 
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(15),
+                  child: Container(
+                    width: 130,
+                    height: 50,
+                    color: Color(0xffF9F6EE),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.star_rate,
+                          color: Colors.black,
+                        ),
+                        Text(
+                          "Streak:",
+                          style: TextStyle(
+                            color: Colors.black,
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        Text(
+                          "0",
+                          style: TextStyle(
+                            color: Colors.black,
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+            ),
+            Card(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(15),
+              ),
+              elevation: 0.5,
+              child: 
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(15),
+                  child: Container(
+                    width: 130,
+                    height: 50,
+                    color: Color(0xffF9F6EE),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.bar_chart,
+                          color: Colors.black,
+                        ),
+                        Text(
+                          "Post:",
+                          style: TextStyle(
+                            color: Colors.black,
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        Text(
+                          "0",
+                          style: TextStyle(
+                            color: Colors.black,
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+            ),
+          ],
+        );
+  }
+
   Container profile_pic_and_username_display() {
     return Container(
-          color: Color(0xfff7fcfe),
+          
           padding: EdgeInsets.only(left: 10),
           height: 150,
           child: Row(

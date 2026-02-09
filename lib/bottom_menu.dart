@@ -48,13 +48,14 @@ class _Bottommenustate extends State<BottomMenu>{
       floatingActionButton: FloatingActionButton(
         onPressed: null,
         backgroundColor: Color(0xffF9F6EE),
-        elevation: 3,
+        elevation: 2,
         shape: CircleBorder(),
         child: Icon(Icons.camera ),
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
       bottomNavigationBar: 
             BottomAppBar(
+              elevation: 15,
               shape: const CircularNotchedRectangle(),
               padding: const EdgeInsets.symmetric(horizontal: 20),
               height: 75,
