@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'newdiary_page.dart';
 
 class Homepage extends StatelessWidget{
   const Homepage({super.key});
@@ -8,6 +9,7 @@ class Homepage extends StatelessWidget{
     return Scaffold(
       backgroundColor: Color(0xfff5f5f5),
       appBar: AppBar(
+        automaticallyImplyLeading: false,
         shadowColor: Color(0xffEDEADE),
         elevation: 2,
         backgroundColor: Color(0xfffffaf0),
@@ -28,20 +30,7 @@ class Homepage extends StatelessWidget{
             SizedBox(
               height: 50,
             ),
-            SizedBox(
-              height: 180,
-              width: 300,
-              child: 
-                ElevatedButton(
-                  onPressed: null, 
-                  style: ElevatedButton.styleFrom(
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10), // Adjust the radius as needed
-                    ),
-                  ),
-                  child:Text('New Diary'),
-                ),
-            ),
+            new_diary_button(context),
             SizedBox(
               height: 60,
             ),
@@ -135,5 +124,44 @@ class Homepage extends StatelessWidget{
         )
       ),
     );
+  }
+
+  SizedBox new_diary_button(BuildContext context) {
+    return SizedBox(
+            height: 180,
+            width: 300,
+            child: 
+              ElevatedButton(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => NewDiary()),
+                  );
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Color(0xffF9F6EE),
+                  foregroundColor: Colors.black,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10), // Adjust the radius as needed
+                  ),
+                ),
+                child:Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.add,
+                      size: 60,
+                    ),
+                    Text(
+                      'New Diary',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontFamily: "Lobstertwo"
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+          );
   }
 }

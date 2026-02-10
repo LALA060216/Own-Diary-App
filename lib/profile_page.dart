@@ -30,7 +30,7 @@ class ProfilePage extends StatelessWidget{
               )
           )
         ],
-
+        automaticallyImplyLeading: false,
       ),
       backgroundColor: Color(0xfff5f5f5),
       body: Column(
