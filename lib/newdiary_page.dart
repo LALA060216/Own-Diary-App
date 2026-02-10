@@ -13,10 +13,11 @@ class _NewDiaryState extends State<NewDiary> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Color(0xfff5f5f5),
+      resizeToAvoidBottomInset: false,
       appBar: appbar(context),
       body: LayoutBuilder(
         builder: (context, constraints) {
-          final double containerHeight = constraints.maxHeight * 0.85;
+          final double containerHeight = constraints.maxHeight * 0.7;
 
           return Align(
             alignment: Alignment.topCenter,
@@ -39,13 +40,45 @@ class _NewDiaryState extends State<NewDiary> {
                 ),
                 child: Column(
                   children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.start,
-                      children: [
-                        Text("Date:"),
-                        Text("date"),
-                      ],
-                    )
+                    Container(
+                      padding: EdgeInsets.all(16),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.start,
+                        children: [
+                          Text(
+                            "Date: ",
+                            style: TextStyle(
+                              fontSize: 16,
+                              color: Colors.black87,
+                            ),
+                          ),
+                          Text(
+                            "date",
+                            style: TextStyle(
+                              fontSize: 16,
+                              color: Colors.black87,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Divider(
+                      height: 1,
+                      thickness: 1.5,
+                      color: Color(0xfff1e9d2),
+                    ),
+                    Expanded(
+                      child: TextField(
+                        maxLines: null,
+                        expands: true,
+                        decoration: InputDecoration(
+                          hintText: "Write your diary entry here...",
+                          contentPadding: EdgeInsets.all(16),
+                          border: InputBorder.none,
+                        ),
+                      ),
+                    ),
+                    
                   ],
                 ),
               ),
@@ -88,6 +121,21 @@ class _NewDiaryState extends State<NewDiary> {
           );
         },
       ),
+      actions: [
+        Container(
+          margin: EdgeInsets.only(right: 20),
+          alignment: Alignment.center,
+          width: 37,
+          child: 
+            IconButton(
+              onPressed: null, 
+              icon: Icon(
+                Icons.save_alt_outlined,
+                size: 28,
+              ),
+            )
+        )
+      ],
     );
   }
 }

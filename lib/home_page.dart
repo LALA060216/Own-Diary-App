@@ -24,9 +24,11 @@ class Homepage extends StatelessWidget{
         centerTitle: true
       
       ),
-      body: Center(
-        child: Column(
-          children: [
+      body: SingleChildScrollView(
+        child: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
             SizedBox(
               height: 50,
             ),
@@ -120,8 +122,9 @@ class Homepage extends StatelessWidget{
               
              
            
-          ],
-        )
+            ],
+          ),
+        ),
       ),
     );
   }
