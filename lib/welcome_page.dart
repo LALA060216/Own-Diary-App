@@ -1,4 +1,5 @@
 import 'package:diaryapp/bottom_menu.dart';
+import 'package:diaryapp/reset_password_page.dart';
 import '/auth/auth_service.dart';
 import 'package:flutter/material.dart';
 
@@ -201,274 +202,279 @@ class _WelcomePageState extends State<WelcomePage> {
 
   Row forrgetPassButton() {
     return Row(
-                        mainAxisAlignment: MainAxisAlignment.end,
-                        children: [
-                          TextButton(
-                            onPressed: null,
-                            child: Text(
-                              'Forgot Password?',
-                              style: TextStyle(
-                                color: Colors.red,
-                                fontSize: 14,
-                              ),
-                            ),
-                          ),
-                        ],
-                      );
+      mainAxisAlignment: MainAxisAlignment.end,
+      children: [
+        TextButton(
+          onPressed: (){
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => ResetPasswordPage()),
+            );
+          },
+          child: Text(
+            'Forgot Password?',
+            style: TextStyle(
+              color: Colors.red,
+              fontSize: 14,
+            ),
+          ),
+        ),
+      ],
+    );
   }
 
   ElevatedButton signInSignUpButton() {
     return ElevatedButton(
-                      onPressed: () {
-                        if (isSignIn) {
-                          signIn();
-                        } else {
-                          register();
-                        }
-                      },
-                      style: ElevatedButton.styleFrom(
-                        elevation: 2,
-                        backgroundColor: const Color(0xFFf4f8ff),
-                        minimumSize: Size(double.infinity, 55),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(30),
-                        ),
-                      ),
-                      child: Text(
-                        isSignIn ? 'Sign In' : 'Sign Up',
-                        style: TextStyle(
-                          color: Colors.black,
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    );
+      onPressed: () {
+        if (isSignIn) {
+          signIn();
+        } else {
+          register();
+        }
+      },
+      style: ElevatedButton.styleFrom(
+        elevation: 2,
+        backgroundColor: const Color(0xFFf4f8ff),
+        minimumSize: Size(double.infinity, 55),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(30),
+        ),
+      ),
+      child: Text(
+        isSignIn ? 'Sign In' : 'Sign Up',
+        style: TextStyle(
+          color: Colors.black,
+          fontSize: 18,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
+    );
   }
 
   Column inputUsername() {
     return Column(
-                        children: [
-                          TextField(
-                            controller: nameController,
-                            decoration: InputDecoration(
-                              hintText: 'Username',
-                              hintStyle: TextStyle(color: Colors.grey[400]),
-                              prefixIcon: Icon(Icons.person_outline,
-                                  color: Colors.grey[600]),
-                              filled: true,
-                              fillColor: Colors.white,
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(25),
-                                borderSide: BorderSide.none,
-                              ),
-                              contentPadding: EdgeInsets.symmetric(
-                                  horizontal: 20, vertical: 16),
-                            ),
-                          ),
-                          SizedBox(height: 30),
-                        ],
-                      );
+      children: [
+        TextField(
+          controller: nameController,
+          decoration: InputDecoration(
+            hintText: 'Username',
+            hintStyle: TextStyle(color: Colors.grey[400]),
+            prefixIcon: Icon(Icons.person_outline,
+                color: Colors.grey[600]),
+            filled: true,
+            fillColor: Colors.white,
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(25),
+              borderSide: BorderSide.none,
+            ),
+            contentPadding: EdgeInsets.symmetric(
+                horizontal: 20, vertical: 16),
+          ),
+        ),
+        SizedBox(height: 30),
+      ],
+    );
   }
 
   Padding passRequirement() {
     return Padding(
-                        padding: const EdgeInsets.fromLTRB(0, 20, 0, 20),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                RequirementItem(
-                                  icon: Icons.check_circle,
-                                  text: '1 uppercase',
-                                  isMet: hasUppercase,
-                                ),
-                                SizedBox(height: 8),
-                                RequirementItem(
-                                  icon: Icons.check_circle,
-                                  text: '1 lowercase',
-                                  isMet: hasLowercase,
-                                ),
-                                SizedBox(height: 8),
-                                RequirementItem(
-                                  icon: Icons.check_circle,
-                                  text: '1 number',
-                                  isMet: hasNumber,
-                                ),
-                              ],
-                            ),
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                RequirementItem(
-                                  icon: Icons.check_circle,
-                                  text: '1 special character',
-                                  isMet: hasSpecialChar,
-                                ),
-                                SizedBox(height: 8),
-                                RequirementItem(
-                                  icon: Icons.check_circle,
-                                  text: '8 minimum character',
-                                  isMet: hasMinLength,
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-                      );
+      padding: const EdgeInsets.fromLTRB(0, 20, 0, 20),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              RequirementItem(
+                icon: Icons.check_circle,
+                text: '1 uppercase',
+                isMet: hasUppercase,
+              ),
+              SizedBox(height: 8),
+              RequirementItem(
+                icon: Icons.check_circle,
+                text: '1 lowercase',
+                isMet: hasLowercase,
+              ),
+              SizedBox(height: 8),
+              RequirementItem(
+                icon: Icons.check_circle,
+                text: '1 number',
+                isMet: hasNumber,
+              ),
+            ],
+          ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              RequirementItem(
+                icon: Icons.check_circle,
+                text: '1 special character',
+                isMet: hasSpecialChar,
+              ),
+              SizedBox(height: 8),
+              RequirementItem(
+                icon: Icons.check_circle,
+                text: '8 minimum character',
+                isMet: hasMinLength,
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
   }
 
   TextField inputPassword() {
     return TextField(
-                      controller: passwordController,
-                      obscureText: !showPassword,
-                      decoration: InputDecoration(
-                        hintText: 'Password',
-                        hintStyle: TextStyle(color: Colors.grey[400]),
-                        prefixIcon: Icon(Icons.lock_outlined,
-                            color: Colors.grey[600]),
-                        suffixIcon: GestureDetector(
-                          onTap: () {
-                            setState(() {
-                              showPassword = !showPassword;
-                            });
-                          },
-                          child: Icon(
-                            showPassword
-                                ? Icons.visibility
-                                : Icons.visibility_off,
-                            color: Colors.grey[600],
-                          ),
-                        ),
-                        filled: true,
-                        fillColor: Colors.white,
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(15),
-                          borderSide: BorderSide.none,
-                        ),
-                        contentPadding: EdgeInsets.symmetric(
-                            horizontal: 20, vertical: 16),
-                      ),
-                    );
+      controller: passwordController,
+      obscureText: !showPassword,
+      decoration: InputDecoration(
+        hintText: 'Password',
+        hintStyle: TextStyle(color: Colors.grey[400]),
+        prefixIcon: Icon(Icons.lock_outlined,
+            color: Colors.grey[600]),
+        suffixIcon: GestureDetector(
+          onTap: () {
+            setState(() {
+              showPassword = !showPassword;
+            });
+          },
+          child: Icon(
+            showPassword
+                ? Icons.visibility
+                : Icons.visibility_off,
+            color: Colors.grey[600],
+          ),
+        ),
+        filled: true,
+        fillColor: Colors.white,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(15),
+          borderSide: BorderSide.none,
+        ),
+        contentPadding: EdgeInsets.symmetric(
+            horizontal: 20, vertical: 16),
+      ),
+    );
   }
 
   TextField inputEmail() {
     return TextField(
-                      controller: emailController,
-                      decoration: InputDecoration(
-                        hintText: 'Email',
-                        hintStyle: TextStyle(color: Colors.grey[400]),
-                        prefixIcon: Icon(Icons.email_outlined,
-                            color: Colors.grey[600]),
-                        filled: true,
-                        fillColor: Colors.white,
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(15),
-                          borderSide: BorderSide.none,
-                        ),
-                        contentPadding: EdgeInsets.symmetric(
-                            horizontal: 20, vertical: 16),
-                      ),
-                    );
+      controller: emailController,
+      decoration: InputDecoration(
+        hintText: 'Email',
+        hintStyle: TextStyle(color: Colors.grey[400]),
+        prefixIcon: Icon(Icons.email_outlined,
+            color: Colors.grey[600]),
+        filled: true,
+        fillColor: Colors.white,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(15),
+          borderSide: BorderSide.none,
+        ),
+        contentPadding: EdgeInsets.symmetric(
+            horizontal: 20, vertical: 16),
+      ),
+    );
   }
 
   GestureDetector switchSignUp() {
     return GestureDetector(
-                      onTap: () {
-                        setState(() {
-                          isSignIn = false;
-                          errorMessage = '';
-                        });
-                      },
-                      child: Column(
-                        children: [
-                          Text(
-                            'Sign Up',
-                            style: TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.w500,
-                              color: !isSignIn
-                                  ? Colors.black87
-                                  : Colors.black54,
-                            ),
-                          ),
-                          if (!isSignIn)
-                            Container(
-                              margin: const EdgeInsets.only(top: 8),
-                              height: 3,
-                              width: 80,
-                              color: Colors.white,
-                            ),
-                        ],
-                      ),
-                    );
+      onTap: () {
+        setState(() {
+          isSignIn = false;
+          errorMessage = '';
+        });
+      },
+      child: Column(
+        children: [
+          Text(
+            'Sign Up',
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.w500,
+              color: !isSignIn
+                  ? Colors.black87
+                  : Colors.black54,
+            ),
+          ),
+          if (!isSignIn)
+            Container(
+              margin: const EdgeInsets.only(top: 8),
+              height: 3,
+              width: 80,
+              color: Colors.white,
+            ),
+        ],
+      ),
+    );
   }
 
   GestureDetector switchSignIn() {
     return GestureDetector(
-                      onTap: () {
-                        setState(() {
-                          isSignIn = true;
-                          errorMessage = '';
-                        });
-                      },
-                      child: Column(
-                        children: [
-                          Text(
-                            'Sign In',
-                            style: TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.w500,
-                              color: isSignIn
-                                  ? Colors.black87
-                                  : Colors.black54,
-                            ),
-                          ),
-                          if (isSignIn)
-                            Container(
-                              margin: const EdgeInsets.only(top: 8),
-                              height: 3,
-                              width: 80,
-                              color: Colors.white,
-                            ),
-                        ],
-                      ),
-                    );
+      onTap: () {
+        setState(() {
+          isSignIn = true;
+          errorMessage = '';
+        });
+      },
+      child: Column(
+        children: [
+          Text(
+            'Sign In',
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.w500,
+              color: isSignIn
+                  ? Colors.black87
+                  : Colors.black54,
+            ),
+          ),
+          if (isSignIn)
+            Container(
+              margin: const EdgeInsets.only(top: 8),
+              height: 3,
+              width: 80,
+              color: Colors.white,
+            ),
+        ],
+      ),
+    );
   }
 
   Container logo() {
     return Container(
-                width: 80,
-                height: 80,
-                decoration: BoxDecoration(
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black12,
-                      blurRadius: 8,
-                    ),
-                  ],
-                  shape: BoxShape.circle,
-                  color: Colors.grey[400],
-                ),
-              );
+      width: 80,
+      height: 80,
+      decoration: BoxDecoration(
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black12,
+            blurRadius: 8,
+          ),
+        ],
+        shape: BoxShape.circle,
+        color: Colors.grey[400],
+      ),
+    );
   }
 
   Container backgroundcolor() {
     return Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [
-                const Color(0xFFddd6e1),
-                const Color(0xFFdbe9f4),
-                const Color(0xFFf0f8ff),
-              ],
-            ),
-          ),
-        );
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            const Color(0xFFddd6e1),
+            const Color(0xFFdbe9f4),
+            const Color(0xFFf0f8ff),
+          ],
+        ),
+      ),
+    );
   }
 }
 
