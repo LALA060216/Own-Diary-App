@@ -1,3 +1,4 @@
+import 'package:diaryapp/pages/settings/account_setting/change_password.dart';
 import 'package:flutter/material.dart';
 import 'package:diaryapp/pages/settings/account_settingPage.dart';
 import 'package:diaryapp/pages/settings/account_setting/change_usernamePage.dart';
@@ -83,7 +84,7 @@ class AccountSettingsModel {
     accountSettingsOptions.add(AccountSettingsModel(
       name: "Change Password",
       icon: Icons.lock_outline,
-      destinationPage: Container(color: Colors.amber,)
+      destinationPage: ChangePasswordPage(),
     ));
 
     accountSettingsOptions.add(AccountSettingsModel(

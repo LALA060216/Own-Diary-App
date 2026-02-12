@@ -1,3 +1,5 @@
+import 'package:diaryapp/auth/auth_service.dart';
+import 'package:diaryapp/welcome_page.dart';
 import 'package:flutter/material.dart';
 import '../models/settings_model.dart';
 
@@ -52,10 +54,21 @@ class SettingPage extends StatelessWidget{
                   padding: EdgeInsets.only(left: 15),
                   height: 55,
                   child: GestureDetector(
-                    onTap: () {
+                    onTap: () async {
+                      // check if user tapped on "Log Out"
+                      final selected = settingOption[index];
+                      if (selected.name == 'Logout') {
+                        await authService.value.signOut();
+                        if (!context.mounted) return;
+                        Navigator.of(context).pushAndRemoveUntil(
+                          MaterialPageRoute(builder: (context) => WelcomePage()),
+                          (route) => false,
+                        );
+                        return;
+                      }
                       Navigator.push(
                         context,
-                        MaterialPageRoute(builder: (context) => settingOption[index].destinationPage),
+                        MaterialPageRoute(builder: (context) => settingOption[index].destinationPage)
                       );
                     },
                   child: Container(
