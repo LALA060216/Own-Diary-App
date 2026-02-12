@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:diaryapp/pages/settings/account_settingPage.dart';
 
 class SettingsModel {
   String name;
@@ -18,7 +19,7 @@ class SettingsModel {
     settingsOptions.add(SettingsModel(
       name: "Account",
       icon: Icons.person_outline,
-      destinationPage: Container(color: Colors.amber,)
+      destinationPage: AccountSettingPage(),
     ));
 
     settingsOptions.add(SettingsModel(
@@ -56,4 +57,41 @@ class SettingsModel {
 
 }
   
+class AccountSettingsModel {
+  String name;
+  IconData icon;
+  Widget destinationPage;
+  
 
+  AccountSettingsModel({
+    required this.name, 
+    required this.icon,
+    required this.destinationPage,
+  });
+
+
+  static List<AccountSettingsModel> getAccountSettingsOptions() {
+    List<AccountSettingsModel> accountSettingsOptions = [];
+
+    accountSettingsOptions.add(AccountSettingsModel(
+      name: "Change Username",
+      icon: Icons.edit_outlined,
+      destinationPage: Container(color: Colors.amber,)
+    ));
+
+    accountSettingsOptions.add(AccountSettingsModel(
+      name: "Change Password",
+      icon: Icons.lock_outline,
+      destinationPage: Container(color: Colors.amber,)
+    ));
+
+    accountSettingsOptions.add(AccountSettingsModel(
+      name: "Delete Account",
+      icon: Icons.delete_outline,
+      destinationPage: Container(color: Colors.amber,)
+    ));
+
+    return accountSettingsOptions;
+  }
+
+}

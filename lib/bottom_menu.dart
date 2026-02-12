@@ -1,7 +1,7 @@
 
 import 'package:flutter/material.dart';
-import 'home_page.dart';
-import 'profile_page.dart';
+import 'pages/home_page.dart';
+import 'pages/profile_page.dart';
 
 class BottomMenu extends StatefulWidget{
   const BottomMenu({super.key});

@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'models/settings_model.dart';
+import '../models/settings_model.dart';
 
 class SettingPage extends StatelessWidget{
   SettingPage({super.key});
