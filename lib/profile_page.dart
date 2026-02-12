@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'setting_page.dart';
 
 class ProfilePage extends StatelessWidget{
   const ProfilePage({super.key});
@@ -22,7 +23,12 @@ class ProfilePage extends StatelessWidget{
             padding: EdgeInsets.only(right: 10),
             child: 
               IconButton(
-                onPressed: null, 
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => SettingPage()),
+                  );
+                },
                 icon: Icon(
                   Icons.settings_outlined,
                   size: 28,
