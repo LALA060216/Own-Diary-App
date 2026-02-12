@@ -1,7 +1,7 @@
 import 'dart:io';
 import 'package:image_picker/image_picker.dart';
 import 'package:flutter/material.dart';
-import 'bottom_menu.dart';
+
 
 class NewDiary extends StatefulWidget{
   const NewDiary({super.key});
@@ -40,6 +40,7 @@ class _NewDiaryState extends State<NewDiary> {
       body: LayoutBuilder(
         builder: (context, constraints) {
           final double containerHeight = constraints.maxHeight * 0.65;
+          final double imagePickerHeight = constraints.maxHeight * 0.25;
 
           return Align(
             alignment: Alignment.topCenter,
@@ -49,7 +50,8 @@ class _NewDiaryState extends State<NewDiary> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   textfield(containerHeight),
-                  SizedBox(
+                  Container(
+                    padding: EdgeInsets.only(top: 15),
                     height: 40,
                     child: Center(
                       child: Text(
@@ -62,7 +64,7 @@ class _NewDiaryState extends State<NewDiary> {
                       ),
                     ),
                     ),
-                  image_picker()
+                  image_picker(imagePickerHeight)
                 ],
               ),
             ),
@@ -74,14 +76,14 @@ class _NewDiaryState extends State<NewDiary> {
 
 
 
-  Row image_picker() {
+  Row image_picker(double imagePickerHeight) {
     return Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                  crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
                     Container(
-                      height: 200,
+                      height: imagePickerHeight,
                       width: 300,
-                      padding: EdgeInsets.only(top: 15, left: 15,right: 10),
+                      padding: EdgeInsets.only(top: 20, left: 15,right: 10),
                       child: _images.isEmpty
                           ? const Text(
                             "No images selected",
@@ -244,10 +246,7 @@ class _NewDiaryState extends State<NewDiary> {
       leading: IconButton(
         icon: Icon(Icons.arrow_back, color: Colors.black),
         onPressed: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => BottomMenu()),
-          );
+          Navigator.pop(context);
         },
       ),
       actions: [
