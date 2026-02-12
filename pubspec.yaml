@@ -42,6 +42,7 @@ dependencies:
   user_repository:
     path: packages/user_repository
   flutter_bloc: ^9.1.1
+  meta: ^1.11.0
 
 dev_dependencies:
   flutter_test:

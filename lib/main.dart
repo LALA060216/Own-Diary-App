@@ -8,7 +8,7 @@ import 'package:user_repository/user_repository.dart' hide FirebaseUserRepo;
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'blocs/bloc/authentication_bloc.dart';
-import 'bottom_menu.dart';
+
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
