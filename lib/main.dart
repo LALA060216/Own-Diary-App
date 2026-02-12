@@ -1,6 +1,5 @@
 import 'package:diaryapp/auth_gate.dart';
 import 'package:flutter/material.dart';
-import 'bottom_menu.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
 

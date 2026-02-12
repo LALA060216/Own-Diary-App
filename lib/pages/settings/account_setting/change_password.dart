@@ -49,6 +49,7 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
         title: Text('Change Password'),
         centerTitle: true,
       ),
+      backgroundColor: Color(0xfff0f8ff),
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
