@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:diaryapp/pages/settings/account_settingPage.dart';
+import 'package:diaryapp/pages/settings/account_setting/change_usernamePage.dart';
 
 class SettingsModel {
   String name;
@@ -76,7 +77,7 @@ class AccountSettingsModel {
     accountSettingsOptions.add(AccountSettingsModel(
       name: "Change Username",
       icon: Icons.edit_outlined,
-      destinationPage: Container(color: Colors.amber,)
+      destinationPage: ChangeUsernamePage(),
     ));
 
     accountSettingsOptions.add(AccountSettingsModel(
