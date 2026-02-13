@@ -1,13 +1,14 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'firestore_service.dart';
 
 ValueNotifier<AuthService> authService = ValueNotifier(AuthService());
 
 class AuthService {
   final FirebaseAuth firebaseAuth = FirebaseAuth.instance;
+  final FirestoreService firestoreService = FirestoreService();
 
   User? get currentUser => firebaseAuth.currentUser;
-
   Stream<User?> get authStateChanges => firebaseAuth.authStateChanges();
 
   Future<UserCredential> signIn({
@@ -24,10 +25,21 @@ class AuthService {
     required String email,
     required String password,
   }) async {
-    return await firebaseAuth.createUserWithEmailAndPassword(
+    final userCredential = await firebaseAuth.createUserWithEmailAndPassword(
       email: email,
       password: password,
     );
+    
+    // Create user document in Firestore
+    if (userCredential.user != null) {
+      await firestoreService.createUserDocument(
+        uid: userCredential.user!.uid,
+        email: email,
+        username: 'User',
+      );
+    }
+    
+    return userCredential;
   }
 
   Future<void> signOut() async {
@@ -42,6 +54,13 @@ class AuthService {
     required String username,
   }) async {
     await currentUser!.updateDisplayName(username);
+    // Also update Firestore
+    if (currentUser != null) {
+      await firestoreService.updateUserProfile(
+        uid: currentUser!.uid,
+        username: username,
+      );
+    }
   }
 
   Future<void> deleteAccount({
@@ -53,6 +72,12 @@ class AuthService {
       password: password,
     );
     await currentUser!.reauthenticateWithCredential(credential);
+    
+    // Delete user document from Firestore before deleting auth account
+    if (currentUser != null) {
+      await firestoreService.deleteUserDocument(currentUser!.uid);
+    }
+    
     await currentUser!.delete();
     await signOut();
   }

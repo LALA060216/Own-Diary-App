@@ -1,5 +1,5 @@
-import 'package:diaryapp/auth/auth_service.dart';
-import 'package:diaryapp/welcome_page.dart';
+import 'package:diaryapp/services/auth_service.dart';
+import 'package:diaryapp/auth/pages/welcome_page.dart';
 import 'package:flutter/material.dart';
 import '../models/settings_model.dart';
 
