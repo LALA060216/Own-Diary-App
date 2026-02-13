@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:diaryapp/auth/auth_service.dart';
-import 'package:diaryapp/welcome_page.dart';
+import 'package:diaryapp/services/auth/auth_service.dart';
+import 'package:diaryapp/services/auth/pages/welcome_page.dart';
 
 
 class DeleteAcc extends StatefulWidget {
@@ -13,7 +13,7 @@ class DeleteAcc extends StatefulWidget {
 class _DeleteAccState extends State<DeleteAcc> {
   final emailController = TextEditingController();
   final passwordController = TextEditingController();
-  String error_message = '';
+  String errorMessage = '';
 
   @override
   void dispose() {
@@ -77,18 +77,18 @@ class _DeleteAccState extends State<DeleteAcc> {
                 } catch (e) {
                   // Handle error, e.g., show a snackbar or dialog
                   setState(() {
-                    error_message = "Error deleting account: $e";
+                    errorMessage = "Error deleting account: $e";
                   });
                 }
               },
               child: Text("Delete Account"),
             ),
           ),
-          if (error_message.isNotEmpty)
+          if (errorMessage.isNotEmpty)
             Padding(
               padding: const EdgeInsets.all(16.0),
               child: Text(
-                error_message,
+                errorMessage,
                 style: TextStyle(color: Colors.red),
               ),
             ),
