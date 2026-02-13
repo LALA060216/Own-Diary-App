@@ -1,6 +1,9 @@
 import 'dart:io';
+import 'package:diaryapp/services/firestore_service.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:flutter/material.dart';
+
 
 
 class NewDiary extends StatefulWidget{
@@ -13,6 +16,16 @@ class NewDiary extends StatefulWidget{
 class _NewDiaryState extends State<NewDiary> {
   final List<File> _images = [];
   final ImagePicker _picker = ImagePicker();
+  final _firestoreService = FirestoreService();
+  final _userId = FirebaseAuth.instance.currentUser!.uid;
+
+  void createNewDiary(String context) async {
+      await _firestoreService.createDiaryEntry(
+        userId: _userId,
+        context: context,
+        imageUrls: [], // Add logic to upload images and get their URLs
+      );
+    }
 
   Future<void> pickImages() async {
     final List<XFile> pickedFiles = await _picker.pickMultiImage();

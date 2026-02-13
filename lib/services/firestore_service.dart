@@ -193,4 +193,20 @@ class FirestoreService {
       rethrow;
     }
   }
+
+  Future<String> createDiaryEntry({
+    required String userId,
+    required String context,
+    required List<String> imageUrls,
+  }) async {
+    final newEntry = DiaryEntryModel(
+      id: '',
+      userId: userId,
+      context: context,
+      imageUrls: imageUrls,
+      created: DateTime.now(),
+      updatedAt: DateTime.now(),
+    );
+    return await addDiaryEntry(newEntry);
+  }
 }
