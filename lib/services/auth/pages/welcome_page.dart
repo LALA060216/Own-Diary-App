@@ -3,12 +3,6 @@ import 'package:diaryapp/services/auth/pages/reset_password_page.dart';
 import '../../auth_service.dart';
 import 'package:flutter/material.dart';
 
-bool hasUppercase = false;
-bool hasLowercase = false;
-bool hasNumber = false;
-bool hasSpecialChar = false;
-bool hasMinLength = false;
-
 class WelcomePage extends StatefulWidget {
   const WelcomePage({super.key});
 
@@ -17,8 +11,16 @@ class WelcomePage extends StatefulWidget {
 }
 
 class _WelcomePageState extends State<WelcomePage> {
+  bool hasUppercase = false;
+  bool hasLowercase = false;
+  bool hasNumber = false;
+  bool hasSpecialChar = false;
+  bool hasMinLength = false;
+  
   bool isSignIn = true;
   bool showPassword = false;
+  bool isLoading = false;
+
   final TextEditingController emailController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
   final TextEditingController nameController = TextEditingController();
@@ -74,6 +76,8 @@ class _WelcomePageState extends State<WelcomePage> {
       return;
     }
 
+    setState(() => isLoading = true); // START loading
+
     try {
       await authService.value.signUp(email: emailController.text, password: passwordController.text);
       // Update display name
@@ -84,6 +88,9 @@ class _WelcomePageState extends State<WelcomePage> {
         errorMessage = 'Registration failed';
       });
     }
+
+    setState(() => isLoading = false); // STOP loading
+
   }
 
   void signIn() async {
@@ -94,6 +101,8 @@ class _WelcomePageState extends State<WelcomePage> {
       return;
     }
 
+    setState(() => isLoading = true); // START loading
+    
     try {
       await authService.value.signIn(email: emailController.text, password: passwordController.text);
       popPage();
@@ -102,6 +111,9 @@ class _WelcomePageState extends State<WelcomePage> {
         errorMessage = 'Email or password is incorrect';
       });
     }
+
+    setState(() => isLoading = false); // STOP loading
+
   }
 
 
@@ -177,6 +189,7 @@ class _WelcomePageState extends State<WelcomePage> {
                         inputUsername(),
                       // Error message display
                       if (errorMessage.isNotEmpty)
+                        SizedBox(height: 10),
                         Text(
                           errorMessage,
                           style: TextStyle(
@@ -184,7 +197,7 @@ class _WelcomePageState extends State<WelcomePage> {
                             fontSize: 14,
                           ),
                         ),
-                      SizedBox(height: 20),
+                      SizedBox(height: 10),
                       // Sign In / Sign Up button
                       signInSignUpButton(),
                       if (isSignIn)
@@ -225,13 +238,16 @@ class _WelcomePageState extends State<WelcomePage> {
 
   ElevatedButton signInSignUpButton() {
     return ElevatedButton(
-      onPressed: () {
-        if (isSignIn) {
-          signIn();
-        } else {
-          register();
-        }
-      },
+      // disable button while loading to prevent double-taps
+      onPressed: isLoading
+          ? null
+          : () {
+              if (isSignIn) {
+                signIn();
+              } else {
+                register();
+              }
+            },
       style: ElevatedButton.styleFrom(
         elevation: 2,
         backgroundColor: const Color(0xFFf4f8ff),
@@ -240,14 +256,20 @@ class _WelcomePageState extends State<WelcomePage> {
           borderRadius: BorderRadius.circular(30),
         ),
       ),
-      child: Text(
-        isSignIn ? 'Sign In' : 'Sign Up',
-        style: TextStyle(
-          color: Colors.black,
-          fontSize: 18,
-          fontWeight: FontWeight.bold,
-        ),
-      ),
+      child: isLoading
+          ? SizedBox(
+              width: 20,
+              height: 20,
+              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black),
+            )
+          : Text(
+              isSignIn ? 'Sign In' : 'Sign Up',
+              style: TextStyle(
+                color: Colors.black,
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
     );
   }
 

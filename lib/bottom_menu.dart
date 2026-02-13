@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 import 'pages/home_page.dart';
 import 'pages/profile_page.dart';
+import 'pages/diary_sum.dart';
 
 class BottomMenu extends StatefulWidget{
   const BottomMenu({super.key});
@@ -15,7 +16,7 @@ class _Bottommenustate extends State<BottomMenu>{
   final _pages = [
     Homepage(),
     Container(color: Colors.blue),
-    Container(color: Colors.red),
+    viewDiary(),
     ProfilePage()
   ];
 
