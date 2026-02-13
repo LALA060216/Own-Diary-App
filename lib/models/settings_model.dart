@@ -1,7 +1,9 @@
 import 'package:diaryapp/pages/settings/account_setting/change_password.dart';
+import 'package:diaryapp/pages/settings/account_setting/delete_acc.dart';
 import 'package:flutter/material.dart';
 import 'package:diaryapp/pages/settings/account_settingPage.dart';
 import 'package:diaryapp/pages/settings/account_setting/change_usernamePage.dart';
+
 
 class SettingsModel {
   String name;
@@ -90,7 +92,7 @@ class AccountSettingsModel {
     accountSettingsOptions.add(AccountSettingsModel(
       name: "Delete Account",
       icon: Icons.delete_outline,
-      destinationPage: Container(color: Colors.amber,)
+      destinationPage: DeleteAcc()
     ));
 
     return accountSettingsOptions;
