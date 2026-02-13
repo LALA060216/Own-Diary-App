@@ -1,6 +1,6 @@
 import 'package:diaryapp/services/auth_service.dart';
 import 'package:diaryapp/bottom_menu.dart';
-import 'package:diaryapp/auth/pages/welcome_page.dart';
+import 'package:diaryapp/services/auth/pages/welcome_page.dart';
 import 'package:flutter/material.dart';
 
 

@@ -1,6 +1,6 @@
 import 'package:diaryapp/pages/settings/account_setting/change_password.dart';
 import 'package:flutter/material.dart';
-import 'package:diaryapp/pages/settings/account_settingPage.dart';
+import 'package:diaryapp/pages/settings/account_setting_page.dart';
 import 'package:diaryapp/pages/settings/account_setting/change_usernamePage.dart';
 
 class SettingsModel {

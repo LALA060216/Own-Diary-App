@@ -1,5 +1,5 @@
 import 'package:diaryapp/services/auth_service.dart';
-import 'package:diaryapp/auth/pages/welcome_page.dart';
+import 'package:diaryapp/services/auth/pages/welcome_page.dart';
 import 'package:flutter/material.dart';
 
 class ChangePasswordPage extends StatefulWidget {
@@ -13,7 +13,7 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _currentPasswordController = TextEditingController();
   final TextEditingController _newPasswordController = TextEditingController();
-  String error_message = '';
+  String errorMessage = '';
 
   @override
   void initState() {
@@ -85,11 +85,11 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
             ),
 
           ),
-          if(error_message.isNotEmpty)
+          if(errorMessage.isNotEmpty)
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16.0),
               child: Text(
-                error_message,
+                errorMessage,
                 style: TextStyle(color: Colors.red),
               ),
             ),
@@ -158,7 +158,7 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
                   authService.value.updatePassword(currentPassword: _currentPasswordController.text, newPassword: _newPasswordController.text, email: _emailController.text);
                 } catch (e) {
                   setState(() {
-                    error_message = e.toString();
+                    errorMessage = e.toString();
                   });
                 }
               },
