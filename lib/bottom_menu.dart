@@ -78,6 +78,7 @@ class _Bottommenustate extends State<BottomMenu>{
                     icon: Icons.data_exploration_outlined,
                     activeIcon: Icons.data_exploration
                   ),
+                  SizedBox(width: 40), //space for the floating button
                   _navbutton(
                     index: 2, 
                     icon: Icons.note_alt_outlined,
