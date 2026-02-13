@@ -18,6 +18,7 @@ class _NewDiaryState extends State<NewDiary> {
   final ImagePicker _picker = ImagePicker();
   final _firestoreService = FirestoreService();
   final _userId = FirebaseAuth.instance.currentUser!.uid;
+  final TextEditingController _diaryController = TextEditingController();
 
   void createNewDiary(String context) async {
       await _firestoreService.createDiaryEntry(
@@ -228,6 +229,7 @@ class _NewDiaryState extends State<NewDiary> {
                       ),
                       Expanded(
                         child: TextField(
+                          controller: _diaryController,
                           maxLines: null,
                           expands: true,
                           decoration: InputDecoration(
@@ -269,7 +271,10 @@ class _NewDiaryState extends State<NewDiary> {
           width: 37,
           child: 
             IconButton(
-              onPressed: null, 
+              onPressed: () {
+                createNewDiary(_diaryController.text);
+                Navigator.pop(context);
+              }, 
               icon: Icon(
                 Icons.save_alt_outlined,
                 size: 28,
