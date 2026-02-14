@@ -1,6 +1,6 @@
 import 'package:diaryapp/bottom_menu.dart';
 import 'package:diaryapp/services/auth/pages/reset_password_page.dart';
-import '../../auth_service.dart';
+import 'package:diaryapp/services/auth/auth_service.dart';
 import 'package:flutter/material.dart';
 
 class WelcomePage extends StatefulWidget {
