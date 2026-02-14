@@ -138,13 +138,13 @@ class FirestoreService {
   // ==================== DIARY ENTRIES OPERATIONS ====================
 
   /// Add a new diary entry
-  Future<String> addDiaryEntry(DiaryEntryModel entry) async {
+  Future<Null> addDiaryEntry(DiaryEntryModel entry) async {
     try {
-      final docRef = await diaryEntriesCollection.add(entry.toFireStore());
+      await diaryEntriesCollection.add(entry.toFireStore());
       // Also increment user's diary count
       await incrementDiaryPostCount(entry.userId);
       await incrementUserStreak(entry.userId);
-      return docRef.id;
+      
     } catch (e) {
       rethrow;
     }
@@ -194,7 +194,7 @@ class FirestoreService {
     }
   }
 
-  Future<String> createDiaryEntry({
+  Future<Null> createDiaryEntry({
     required String userId,
     required String context,
     required List<String> imageUrls,
@@ -207,6 +207,6 @@ class FirestoreService {
       created: DateTime.now(),
       updatedAt: DateTime.now(),
     );
-    return await addDiaryEntry(newEntry);
+    await addDiaryEntry(newEntry);
   }
 }

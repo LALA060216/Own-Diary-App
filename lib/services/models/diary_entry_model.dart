@@ -21,7 +21,7 @@ class DiaryEntryModel {
   factory DiaryEntryModel.fromFirestore(DocumentSnapshot doc){
     Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
     return DiaryEntryModel(
-      id: data['id'] ?? '',
+      id: doc.id,
       userId: data['userId'] ?? '',
       context: data['context'] ?? '',
       imageUrls: List<String>.from(data['imageUrls'] ?? []),
