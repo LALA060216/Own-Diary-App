@@ -3,7 +3,7 @@ import 'package:diaryapp/services/firestore_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:flutter/material.dart';
-
+import 'package:diaryapp/services/firebaseStorage_service.dart';
 
 
 class NewDiary extends StatefulWidget{
@@ -17,14 +17,32 @@ class _NewDiaryState extends State<NewDiary> {
   final List<File> _images = [];
   final ImagePicker _picker = ImagePicker();
   final _firestoreService = FirestoreService();
+  final _firebaseStorageService = FirebaseStorageService();
   final _userId = FirebaseAuth.instance.currentUser!.uid;
   final TextEditingController _diaryController = TextEditingController();
+  bool error = false;
+  String errorMessage = "Failed to upload image";
+
+
+  Future<List<String>> uploadImages() async {
+    List<String> imageUrls = [];
+    for (File image in _images) {
+      String? url = await _firebaseStorageService.uploadImage(image, _userId);
+      if (url != null) {
+        imageUrls.add(url);
+      }
+      else {
+        error = true;
+      }
+    }
+    return imageUrls;
+  }
 
   void createNewDiary(String context) async {
       await _firestoreService.createDiaryEntry(
         userId: _userId,
         context: context,
-        imageUrls: [], // Add logic to upload images and get their URLs
+        imageUrls: await uploadImages(), // Add logic to upload images and get their URLs
       );
     }
 
@@ -55,6 +73,7 @@ class _NewDiaryState extends State<NewDiary> {
         builder: (context, constraints) {
           final double containerHeight = constraints.maxHeight * 0.65;
           final double imagePickerHeight = constraints.maxHeight * 0.25;
+          final double width = constraints.maxWidth * 0.95;
 
           return Align(
             alignment: Alignment.topCenter,
@@ -63,7 +82,7 @@ class _NewDiaryState extends State<NewDiary> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  textfield(containerHeight),
+                  textfield(containerHeight, width),
                   Container(
                     padding: EdgeInsets.only(top: 15),
                     height: 40,
@@ -78,7 +97,7 @@ class _NewDiaryState extends State<NewDiary> {
                       ),
                     ),
                     ),
-                  image_picker(imagePickerHeight)
+                  imagePicker(width, imagePickerHeight)
                 ],
               ),
             ),
@@ -88,103 +107,104 @@ class _NewDiaryState extends State<NewDiary> {
     );
   }
 
-
-
-  Row image_picker(double imagePickerHeight) {
-    return Row(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    Container(
-                      height: imagePickerHeight,
-                      width: 300,
-                      padding: EdgeInsets.only(top: 20, left: 15,right: 10),
-                      child: _images.isEmpty
-                          ? const Text(
-                            "No images selected",
-                            style: TextStyle(
-                              fontFamily: 'lobstertwo',
-                              fontSize: 16,
-                              color: Colors.black,
-                            ),)
-                          : ListView.builder(
-                              scrollDirection: Axis.horizontal,
-                              itemCount: _images.length,
-                              itemBuilder: (context, index) {
-                                return Stack(
-                                  children: [
-                                    Container(
-                                      margin: EdgeInsets.only(right: 8),
-                                      width: 100,
-                                      height: 100,
-                                      child: ClipRRect(
-                                        borderRadius: BorderRadius.circular(8),
-                                        child: Image.file(
-                                          _images[index],
-                                          fit: BoxFit.cover,
-                                        ),
-                                      ),
-                                    ),
-                                    Positioned(
-                                      top: 4,
-                                      right: 4,
-                                      child: GestureDetector(
-                                        onTap: () => removeImageAt(index),
-                                        child: Container(
-                                          decoration: BoxDecoration(
-                                            color: Colors.black54,
-                                            shape: BoxShape.circle,
-                                          ),
-                                          child: Icon(
-                                            Icons.close,
-                                            size: 20,
-                                            color: Colors.white,
-                                          ),
-                                        ),
-                                      ),
-                                    )
-                                  ],
-                                );
-                              },
-                            ),
-                    ),
-                    Container(
-                      height: 130,
-                      width: 70,
-                      decoration: BoxDecoration(
-                        color: Color(0xfff5f5f5),
-                        borderRadius: BorderRadius.circular(8),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Color(0xffe7eae5),
-                            spreadRadius: 2,
-                            blurRadius: 4,
-                            offset: Offset(0, 1),
-                          ),
-                        ],
-                      ),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+  Container imagePicker(double width, double imagePickerHeight) {
+    return Container(
+                  width: width,
+                  child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
-                          GestureDetector(
-                            onTap: pickImages,
-                            child: Icon(Icons.add),
+                          Container(
+                            height: imagePickerHeight,
+                            width: 300,
+                            padding: EdgeInsets.only(top: 20, left: 15,right: 10),
+                            child: _images.isEmpty
+                                ? const Text(
+                                  "No images selected",
+                                  style: TextStyle(
+                                    fontFamily: 'lobstertwo',
+                                    fontSize: 16,
+                                    color: Colors.black,
+                                  ),)
+                                : ListView.builder(
+                                    scrollDirection: Axis.horizontal,
+                                    itemCount: _images.length,
+                                    itemBuilder: (context, index) {
+                                      return Stack(
+                                        children: [
+                                          Container(
+                                            margin: EdgeInsets.only(right: 8),
+                                            width: 100,
+                                            height: 100,
+                                            child: ClipRRect(
+                                              borderRadius: BorderRadius.circular(8),
+                                              child: Image.file(
+                                                _images[index],
+                                                fit: BoxFit.cover,
+                                              ),
+                                            ),
+                                          ),
+                                          Positioned(
+                                            top: 4,
+                                            right: 4,
+                                            child: GestureDetector(
+                                              onTap: () => removeImageAt(index),
+                                              child: Container(
+                                                decoration: BoxDecoration(
+                                                  color: Colors.black54,
+                                                  shape: BoxShape.circle,
+                                                ),
+                                                child: Icon(
+                                                  Icons.close,
+                                                  size: 20,
+                                                  color: Colors.white,
+                                                ),
+                                              ),
+                                            ),
+                                          )
+                                        ],
+                                      );
+                                    },
+                                  ),
                           ),
-                          Divider(
-                            thickness: 1,
-                            height: 1,
-                            color: Color(0xffe7eae5),
+                          Container(
+                            height: 130,
+                            width: 70,
+                            decoration: BoxDecoration(
+                              color: Color(0xfff5f5f5),
+                              borderRadius: BorderRadius.circular(8),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Color(0xffe7eae5),
+                                  spreadRadius: 2,
+                                  blurRadius: 4,
+                                  offset: Offset(0, 1),
+                                ),
+                              ],
+                            ),
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                              children: [
+                                GestureDetector(
+                                  onTap: pickImages,
+                                  child: Icon(Icons.add),
+                                ),
+                                Divider(
+                                  thickness: 1,
+                                  height: 1,
+                                  color: Color(0xffe7eae5),
+                                ),
+                                Icon(Icons.camera)
+                              ],
+                            ),
                           ),
-                          Icon(Icons.camera)
                         ],
                       ),
-                    ),
-                  ],
                 );
   }
 
-  Container textfield(double containerHeight) {
+  Container textfield(double containerHeight, double width) {
     return Container(
-                  width: 360,
+                  width: width,
                   height: containerHeight,
                   decoration: BoxDecoration(
                     color: Color(0xffF9F6EE),
@@ -273,7 +293,17 @@ class _NewDiaryState extends State<NewDiary> {
             IconButton(
               onPressed: () {
                 createNewDiary(_diaryController.text);
-                Navigator.pop(context);
+                if (!error) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text(errorMessage)),
+                  );
+                }
+                else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text("Diary entry created successfully!")),
+                  );
+                }
+
               }, 
               icon: Icon(
                 Icons.save_alt_outlined,
