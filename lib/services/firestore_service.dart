@@ -210,3 +210,5 @@ class FirestoreService {
     await addDiaryEntry(newEntry);
   }
 }
+
+

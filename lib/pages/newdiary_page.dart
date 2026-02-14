@@ -3,7 +3,7 @@ import 'package:diaryapp/services/firestore_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:flutter/material.dart';
-import 'package:diaryapp/services/firebaseStorage_service.dart';
+import 'package:diaryapp/services/firebase_storage_service.dart';
 
 
 class NewDiary extends StatefulWidget{
@@ -39,12 +39,16 @@ class _NewDiaryState extends State<NewDiary> {
   }
 
   void createNewDiary(String context) async {
+    try {
       await _firestoreService.createDiaryEntry(
         userId: _userId,
         context: context,
         imageUrls: await uploadImages(), // Add logic to upload images and get their URLs
       );
+    } catch (e) {
+      error = true;
     }
+  }
 
   Future<void> pickImages() async {
     final List<XFile> pickedFiles = await _picker.pickMultiImage();
@@ -293,7 +297,7 @@ class _NewDiaryState extends State<NewDiary> {
             IconButton(
               onPressed: () {
                 createNewDiary(_diaryController.text);
-                if (!error) {
+                if (error) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(content: Text(errorMessage)),
                   );
