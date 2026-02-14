@@ -1,4 +1,4 @@
-import 'package:diaryapp/services/auth_service.dart';
+import 'package:diaryapp/services/auth/auth_service.dart';
 import 'package:diaryapp/services/auth/pages/welcome_page.dart';
 import 'package:flutter/material.dart';
 
@@ -159,12 +159,12 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
                   borderRadius: BorderRadius.circular(10),
                 ),
               ),
-              onPressed: () {
+              onPressed: () async{
                 try{
-                  authService.value.updatePassword(currentPassword: _currentPasswordController.text, newPassword: _newPasswordController.text, email: _emailController.text);
+                  await authService.value.updatePassword(currentPassword: _currentPasswordController.text, newPassword: _newPasswordController.text, email: _emailController.text);
                 } catch (e) {
                   setState(() {
-                    errorMessage = e.toString();
+                    errorMessage = 'Wrong current password or email. Please try again.';
                   });
                 }
               },

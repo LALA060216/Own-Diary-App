@@ -1,4 +1,4 @@
-import 'package:diaryapp/services/auth_service.dart';
+import 'package:diaryapp/services/auth/auth_service.dart';
 import 'package:flutter/material.dart';
 
 class ResetPasswordPage extends StatefulWidget {

@@ -64,9 +64,9 @@ class _DeleteAccState extends State<DeleteAcc> {
                   borderRadius: BorderRadius.circular(10),
                 ),
               ),
-              onPressed: () {
+              onPressed: () async{
                 try {
-                  authService.value.deleteAccount(
+                  await authService.value.deleteAccount(
                     email: emailController.text,
                     password: passwordController.text,
                   );
@@ -77,7 +77,7 @@ class _DeleteAccState extends State<DeleteAcc> {
                 } catch (e) {
                   // Handle error, e.g., show a snackbar or dialog
                   setState(() {
-                    errorMessage = "Error deleting account: $e";
+                    errorMessage = "Wrong email or password. Please try again.";
                   });
                 }
               },

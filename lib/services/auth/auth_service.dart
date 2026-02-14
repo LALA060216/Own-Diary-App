@@ -67,19 +67,25 @@ class AuthService {
     required String email,
     required String password,
   }) async {
-    AuthCredential credential = EmailAuthProvider.credential(
-      email: email,
-      password: password,
-    );
-    await currentUser!.reauthenticateWithCredential(credential);
-    
-    // Delete user document from Firestore before deleting auth account
-    if (currentUser != null) {
-      await firestoreService.deleteUserDocument(currentUser!.uid);
+    try{
+      AuthCredential credential = EmailAuthProvider.credential(
+        email: email,
+        password: password,
+      );
+      await currentUser!.reauthenticateWithCredential(credential);
+      
+      // Delete user document from Firestore before deleting auth account
+      if (currentUser != null) {
+        await firestoreService.deleteUserDocument(currentUser!.uid);
+      }
+      
+      await currentUser!.delete();
+      await signOut();
+
+    } catch (e) {
+      print('Error deleting account: $e');
+      rethrow;
     }
-    
-    await currentUser!.delete();
-    await signOut();
   }
 
   Future<void> updatePassword({
@@ -87,11 +93,16 @@ class AuthService {
     required String newPassword,
     required String email,
   }) async {
-    AuthCredential credential = EmailAuthProvider.credential(
-      email: email,
-      password: currentPassword,
-    );
-    await currentUser!.reauthenticateWithCredential(credential);
-    await currentUser!.updatePassword(newPassword);
+    try{
+      AuthCredential credential = EmailAuthProvider.credential(
+        email: email,
+        password: currentPassword,
+      );
+      await currentUser!.reauthenticateWithCredential(credential);
+      await currentUser!.updatePassword(newPassword);
+    } catch (e) {
+      print('Error updating password: $e');
+      rethrow;
+    }
   }
 }
