@@ -12,7 +12,9 @@ class SettingPage extends StatelessWidget{
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: Color(0xfff0f8ff),
+        backgroundColor: Color(0xfffffaf0),
+        shadowColor: Color(0xffEDEADE),
+        elevation: 2,
         title: Text(
           'Settings', 
           style: TextStyle(
@@ -28,16 +30,9 @@ class SettingPage extends StatelessWidget{
             Navigator.pop(context);
           },
         ),
-        bottom: PreferredSize(
-          preferredSize: Size.fromHeight(1), 
-          child: Divider(
-            height: 1,
-            thickness: 2,
-            color: Color(0xffddd6e1),
-        ),)
-        
+      
       ),
-      backgroundColor: Color(0xfff0f8ff),
+      backgroundColor: Color(0xfff5f5f5),
       body: Center(
         child: Column(
           children: [

@@ -26,8 +26,12 @@ class _DeleteAccState extends State<DeleteAcc> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        backgroundColor: Color(0xfffffaf0),
+        shadowColor: Color(0xffEDEADE),
+        elevation: 1,
         title: Text("Delete Account"),
       ),
+      backgroundColor: Color(0xfff5f5f5),
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -60,6 +64,8 @@ class _DeleteAccState extends State<DeleteAcc> {
             width: 200,
             child: ElevatedButton(
               style: ElevatedButton.styleFrom(
+                backgroundColor: Color(0xfffffaf0),
+                foregroundColor: Colors.black,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(10),
                 ),

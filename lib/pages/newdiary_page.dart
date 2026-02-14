@@ -50,6 +50,7 @@ class _NewDiaryState extends State<NewDiary> {
     }
   }
 
+
   Future<void> pickImages() async {
     final List<XFile> pickedFiles = await _picker.pickMultiImage();
     if (pickedFiles.isEmpty) {
@@ -67,6 +68,12 @@ class _NewDiaryState extends State<NewDiary> {
     });
   }
 
+  @override
+  void dispose() {
+    _diaryController.dispose();
+    super.dispose();
+  }
+  
   @override
   Widget build(BuildContext context) {
     return Scaffold(
