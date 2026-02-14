@@ -5,13 +5,14 @@ import 'dart:io';
 class FirebaseStorageService {
   final FirebaseStorage _storage = FirebaseStorage.instance;
 
-  Future<String?> uploadImage(File imageFile, String userId) async {
+  Future<String?> uploadImage(File imageFile, String userId, String id) async {
     try {
       // Create a reference to the Firebase Storage folder
       final storageRef = _storage
           .ref()
-          .child('user_images')  // folder name
-          .child('$userId-${DateTime.now().millisecondsSinceEpoch}.jpg');
+          .child(userId)  // folder name
+          .child(id)
+          .child('$userId-$id-${DateTime.now().millisecondsSinceEpoch}.jpg');
 
       final uploadTask = storageRef.putFile(imageFile);
       final snapshot = await uploadTask;
@@ -21,5 +22,15 @@ class FirebaseStorageService {
       return null;
     }
   }
+
+  Future<void> deleteImage(String imageUrl) async {
+    try {
+      final ref = _storage.refFromURL(imageUrl);
+      await ref.delete();
+    } catch (e) {
+      rethrow;
+    }
+  }
+
 }
 

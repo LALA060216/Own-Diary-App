@@ -138,13 +138,13 @@ class FirestoreService {
   // ==================== DIARY ENTRIES OPERATIONS ====================
 
   /// Add a new diary entry
-  Future<Null> addDiaryEntry(DiaryEntryModel entry) async {
+  Future<String> addDiaryEntry(DiaryEntryModel entry) async {
     try {
-      await diaryEntriesCollection.add(entry.toFireStore());
+      final docRef = await diaryEntriesCollection.add(entry.toFireStore());
       // Also increment user's diary count
       await incrementDiaryPostCount(entry.userId);
       await incrementUserStreak(entry.userId);
-      
+      return docRef.id;
     } catch (e) {
       rethrow;
     }
@@ -176,15 +176,6 @@ class FirestoreService {
             .toList());
   }
 
-  /// Update a diary entry
-  Future<void> updateDiaryEntry(String entryId, DiaryEntryModel entry) async {
-    try {
-      await diaryEntriesCollection.doc(entryId).update(entry.toFireStore());
-    } catch (e) {
-      rethrow;
-    }
-  }
-
   /// Delete a diary entry
   Future<void> deleteDiaryEntry(String entryId) async {
     try {
@@ -194,10 +185,10 @@ class FirestoreService {
     }
   }
 
-  Future<Null> createDiaryEntry({
+  Future<String> createDiaryEntry({
     required String userId,
     required String context,
-    required List<String> imageUrls,
+    List<String> imageUrls = const [],
   }) async {
     final newEntry = DiaryEntryModel(
       id: '',
@@ -207,7 +198,37 @@ class FirestoreService {
       created: DateTime.now(),
       updatedAt: DateTime.now(),
     );
-    await addDiaryEntry(newEntry);
+    return await addDiaryEntry(newEntry);
+  }
+
+  /// Update diary entry context
+  Future<void> updateDiaryEntryContext({
+    required String entryId,
+    required String newContext,
+  }) async {
+    try {
+      await diaryEntriesCollection.doc(entryId).update({
+        'context': newContext,
+        'updatedAt': Timestamp.fromDate(DateTime.now()),
+      });
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  /// Update diary entry image URLs
+  Future<void> updateDiaryEntryImageUrls({
+    required String entryId,
+    required List<String> newImageUrls
+  }) async {
+    try{
+      await diaryEntriesCollection.doc(entryId).update({
+        'imageUrls': newImageUrls,
+        'updatedAt': Timestamp.fromDate(DateTime.now()),
+      });
+    } catch (e) {
+      rethrow;
+    }
   }
 }
 
