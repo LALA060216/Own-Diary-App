@@ -115,6 +115,8 @@ class FirestoreService {
     }
   }
 
+
+
   // increment user streak by 1
   Future<void> incrementUserStreak(String uid) async {
     try {
@@ -210,5 +212,6 @@ class FirestoreService {
     await addDiaryEntry(newEntry);
   }
 }
+
 
 

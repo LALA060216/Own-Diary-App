@@ -1,11 +1,44 @@
+import 'package:diaryapp/services/models/user_model.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'setting_page.dart';
+import 'package:diaryapp/services/firestore_service.dart';
 
-class ProfilePage extends StatelessWidget{
-  const ProfilePage({super.key});
+class ProfilePage extends StatefulWidget{
+  ProfilePage({super.key});
+  @override
+  State<ProfilePage> createState() => _ProfilePageState();
+
+}
+
+class _ProfilePageState extends State<ProfilePage> {
+
+  final FirestoreService _firestoreService = FirestoreService();
+  UserModel? currentUserModel;
+  
+  Stream<UserModel?> fetchUserData() {
+    String? userId = FirebaseAuth.instance.currentUser?.uid;
+    if (userId == null) {
+      return Stream.value(null);
+    }
+    return _firestoreService.getUserDataStream(userId);
+  }
+  @override
+  void initState() {
+    super.initState();
+    fetchUserData().listen((userModel) {
+      setState(() {
+        currentUserModel = userModel;
+      });
+    });
+  }
+
+  
 
   @override
+  
   Widget build(BuildContext context) {
+    fetchUserData();
     return Scaffold(
       appBar: AppBar(
         backgroundColor: Color(0xfffffaf0),
@@ -217,14 +250,14 @@ class ProfilePage extends StatelessWidget{
                     mainAxisAlignment: MainAxisAlignment.center,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text("username",
+                      Text(currentUserModel?.username ?? "Guest",
                         style: TextStyle(
                           fontSize: 24,
                           fontWeight: FontWeight.bold,
                           fontFamily: "Lobstertwo"
                         ),
                       ),
-                      Text("username",
+                      Text(currentUserModel?.email ?? "",
                         style: TextStyle(
                           fontSize: 20,
                           fontFamily: "Lobstertwo"
