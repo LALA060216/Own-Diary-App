@@ -140,12 +140,23 @@ class FirestoreService {
   // ==================== DIARY ENTRIES OPERATIONS ====================
 
   /// Add a new diary entry
-  Future<String> addDiaryEntry(DiaryEntryModel entry) async {
+  Future<String> addDiaryEntry(DiaryEntryModel entry, DateTime date) async {
     try {
+      final user = await getUserData(entry.userId);
       final docRef = await diaryEntriesCollection.add(entry.toFireStore());
-      // Also increment user's diary count
+
       await incrementDiaryPostCount(entry.userId);
-      await incrementUserStreak(entry.userId);
+      if (user?.lastPostDate == null){
+        incrementDiaryPostCount(entry.userId);
+      } else {
+        final lastPostDate = user!.lastPostDate!;
+        final differenceInDays = date.difference(lastPostDate).inDays;
+        if (differenceInDays == 1) {
+          await incrementUserStreak(entry.userId);
+        } else if (differenceInDays > 1) {
+          await resetUserStreak(entry.userId);
+        }
+      }
       return docRef.id;
     } catch (e) {
       rethrow;
@@ -190,6 +201,7 @@ class FirestoreService {
   Future<String> createDiaryEntry({
     required String userId,
     required String context,
+    required DateTime date,
     List<String> imageUrls = const [],
   }) async {
     final newEntry = DiaryEntryModel(
@@ -197,10 +209,10 @@ class FirestoreService {
       userId: userId,
       context: context,
       imageUrls: imageUrls,
-      created: DateTime.now(),
-      updatedAt: DateTime.now(),
+      created: date,
+      updatedAt: date,
     );
-    return await addDiaryEntry(newEntry);
+    return await addDiaryEntry(newEntry, date);
   }
 
   /// Update diary entry context

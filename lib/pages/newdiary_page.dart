@@ -19,9 +19,12 @@ class _NewDiaryState extends State<NewDiary> {
   final _firestoreService = FirestoreService();
   final _firebaseStorageService = FirebaseStorageService();
   final _userId = FirebaseAuth.instance.currentUser!.uid;
+  final DateTime date = DateTime.now();
+  bool isLoading = false;
   List<String> imageUrls = [];
   String _id = '';
   List<File> pickedImages = [];
+
 
   final TextEditingController _diaryController = TextEditingController();
   bool error = false;
@@ -43,6 +46,7 @@ class _NewDiaryState extends State<NewDiary> {
         userId: _userId,
         context: context,
         imageUrls: [],
+        date: date,
       );
     } catch (e) {
       error = true;
@@ -66,12 +70,19 @@ class _NewDiaryState extends State<NewDiary> {
         entryId: _id,
         newImageUrls: imageUrls,
       );
+      setState(() {
+        isLoading = false;
+      });
     } catch (e) {
-      error = true;
+      rethrow;
     }
   }
 
   Future<Null> uploadImages() async {
+    setState(() {
+      isLoading = true;
+    });
+
     for (int i = 0; i < pickedImages.length; i++) {
       String? url = await _firebaseStorageService.uploadImage(pickedImages[i], _userId, _id);
       if (url != null) {
@@ -185,17 +196,25 @@ class _NewDiaryState extends State<NewDiary> {
                                 top: 4,
                                 right: 100*0.1,
                                 child: GestureDetector(
-                                  onTap: () => removeImageAt(index),
+                                  onTap: isLoading ? null : () => removeImageAt(index),
                                   child: Container(
+                                    height: 20,
+                                    width: 20,
                                     decoration: BoxDecoration(
                                       color: Colors.black54,
                                       shape: BoxShape.circle,
                                     ),
-                                    child: Icon(
-                                      Icons.close,
-                                      size: 20,
-                                      color: Colors.white,
-                                    ),
+                                    child: isLoading ?
+                                      CircularProgressIndicator(
+                                        strokeWidth: 1.5, 
+                                        color: Colors.white
+
+                                        )
+                                      : Icon( 
+                                        Icons.close,
+                                        size: 20,
+                                        color: Colors.white,
+                                      ),
                                   ),
                                 ),
                               )
@@ -205,14 +224,14 @@ class _NewDiaryState extends State<NewDiary> {
                       ),
               ),
               Container(
-                height: imagePickerHeight,
+                height: imagePickerHeight*0.7,
                 width: width * 0.20,
                 decoration: BoxDecoration(
-                  color: Color(0xfff5f5f5),
+                  color: Color(0xffF9F6EE),
                   borderRadius: BorderRadius.circular(8),
                   boxShadow: [
                     BoxShadow(
-                      color: Color.fromARGB(255, 218, 220, 217),
+                      color: Color(0xffEDEADE),
                       spreadRadius: 2,
                       blurRadius: 4,
                       offset: Offset(0, 1),
@@ -227,9 +246,9 @@ class _NewDiaryState extends State<NewDiary> {
                       child: Icon(Icons.add),
                     ),
                     Divider(
-                      thickness: 5,
+                      thickness: 2,
                       height: 1,
-                      color: Color.fromARGB(255, 218, 220, 217),
+                      color: Color(0xffEDEADE),
                     ),
                     Icon(Icons.camera)
                   ],
@@ -271,7 +290,7 @@ class _NewDiaryState extends State<NewDiary> {
                   ),
                 ),
                 Text(
-                  "date",
+                  date.toString().substring(0, 10),
                   style: TextStyle(
                     fontSize: 16,
                     color: Colors.black87,
