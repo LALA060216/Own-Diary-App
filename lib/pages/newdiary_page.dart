@@ -23,6 +23,7 @@ class _NewDiaryState extends State<NewDiary> {
 
   final DateTime date = DateTime.now();
   bool isLoading = false;
+  bool created = false;
   List<String> imageUrls = [];
   List<File> pickedImages = [];
   String _id = '';
@@ -37,18 +38,26 @@ class _NewDiaryState extends State<NewDiary> {
   @override
   void initState() {
     super.initState();
-    createNewDiary('');
-    _diaryController.addListener(() {
-      updateDiary(_diaryController.text);
+    _diaryController.addListener(() async {
+      if (_images.isEmpty && _diaryController.text.length == 1 && !created) {
+        createNewDiary();
+        created = true;
+      } else if (_diaryController.text.isEmpty && _images.isEmpty && created) {
+        await _firestoreService.deleteDiaryEntry(_id);
+        _id = '';
+        created = false;
+      } else if (_diaryController.text.isNotEmpty) {
+        aupdateDiary(_diaryController.text);
+      }
     });
   }
 
-  void createNewDiary(String context) async {
+  void createNewDiary() async {
     try {
       _firestoreService.updateStreakAndDiaryCount(uid: _userId, date: date);
       _id = await _firestoreService.createDiaryEntry(
         userId: _userId,
-        context: context,
+        context: '',
         imageUrls: [],
         date: date,
       );
@@ -57,7 +66,7 @@ class _NewDiaryState extends State<NewDiary> {
     }
   }
 
-  Future<void> updateDiary(String context) async {
+  Future<void> aupdateDiary(String context) async {
     try {
       await _firestoreService.updateDiaryEntryContext(
         entryId: _id,
@@ -109,6 +118,9 @@ class _NewDiaryState extends State<NewDiary> {
     setState(() {
       pickedImages = pickedFiles.map((file) => File(file.path)).toList();
       _images.addAll(pickedFiles.map((file) => File(file.path)));
+      if (_images.isNotEmpty && _id.isEmpty) {
+        createNewDiary();
+      }
       uploadImages();
     });
   }
