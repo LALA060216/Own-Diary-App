@@ -236,7 +236,7 @@ class _DiariesState extends State<Diaries> {
                                     IconButton(
                                       icon: const Icon(Icons.delete, color: Color(0xFF483D3C)),
                                       onPressed: () async {
-                                        await firestoreService.deleteDiaryEntry(diary.id);
+                                        await firestoreService.deleteDiaryEntry(diary.id, userId!);
                                       },
                                     ),
                                   ],

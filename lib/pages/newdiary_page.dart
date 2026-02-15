@@ -4,7 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:diaryapp/services/firebase_storage_service.dart';
-
+// 魔丸
 
 class NewDiary extends StatefulWidget{
   const NewDiary({super.key});
@@ -43,7 +43,7 @@ class _NewDiaryState extends State<NewDiary> {
         createNewDiary();
         created = true;
       } else if (_diaryController.text.isEmpty && _images.isEmpty && created) {
-        await _firestoreService.deleteDiaryEntry(_id);
+        await _firestoreService.deleteDiaryEntry(_id, _userId);
         _id = '';
         created = false;
       } else if (_diaryController.text.isNotEmpty) {
@@ -54,7 +54,8 @@ class _NewDiaryState extends State<NewDiary> {
 
   void createNewDiary() async {
     try {
-      _firestoreService.updateStreakAndDiaryCount(uid: _userId, date: date);
+      _firestoreService.updateStreak(uid: _userId, date: date);
+      _firestoreService.incrementDiaryPostCount(_userId);
       _id = await _firestoreService.createDiaryEntry(
         userId: _userId,
         context: '',

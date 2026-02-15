@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'models/diary_entry_model.dart';
+import 'models/unfinish_entry_model.dart';
 import 'models/user_model.dart';
 
 class FirestoreService {
@@ -13,6 +14,9 @@ class FirestoreService {
   // Diary Entries collection reference
   CollectionReference<Map<String, dynamic>> get diaryEntriesCollection =>
       firestore.collection('diaryEntries');
+
+  CollectionReference<Map<String, dynamic>> get unfinishDiaryEntriesCollection =>
+      firestore.collection('unfinishDiaryEntries');
 
   // ==================== USER OPERATIONS ====================
 
@@ -77,7 +81,7 @@ class FirestoreService {
   }
 
   /// Update user streak and total diary posted
-  Future<void> updateStreakAndDiaryCount({
+  Future<void> updateStreak({
     required String uid,
     required DateTime date,
   }) async {
@@ -98,7 +102,6 @@ class FirestoreService {
           }
         }
       }
-      await incrementDiaryPostCount(uid);
     } catch (e) {
       rethrow;
     }
@@ -126,6 +129,25 @@ class FirestoreService {
     }
   }
 
+  Future<int> getUserStreak(String uid) async {
+    try{
+      final userData = await getUserData(uid);
+      return userData?.streak ?? 0;
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  /// Decrement total diary posted count (call when user deletes a diary entry)
+  Future<void> decrementDiaryPostCount(String uid) async {
+    try {
+      await usersCollection.doc(uid).update({
+        'totalDiaryPosted': FieldValue.increment(-1),
+      });
+    } catch (e) {
+      rethrow;
+    }
+  }
 
 
   // increment user streak by 1
@@ -200,9 +222,10 @@ class FirestoreService {
   }
 
   /// Delete a diary entry
-  Future<void> deleteDiaryEntry(String entryId) async {
+  Future<void> deleteDiaryEntry(String entryId, String userId) async {
     try {
       await diaryEntriesCollection.doc(entryId).delete();
+      await decrementDiaryPostCount(userId);
     } catch (e) {
       rethrow;
     }

@@ -1,8 +1,36 @@
+import 'package:diaryapp/services/firestore_service.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'newdiary_page.dart';
 
-class Homepage extends StatelessWidget{
+class Homepage extends StatefulWidget {
   const Homepage({super.key});
+  
+
+  @override
+  State<Homepage> createState() => _HomepageState();
+}
+
+class _HomepageState extends State<Homepage> {
+  FirebaseAuth firebaseAuth = FirebaseAuth.instance;
+  FirestoreService firestoreService = FirestoreService();
+  String userId = FirebaseAuth.instance.currentUser!.uid;
+  String streak = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _getStreak();
+  }
+
+  Future<void> _getStreak() async {
+    final value  = await firestoreService.getUserStreak(userId);
+    if (!mounted) return;
+    setState(() {
+      streak = value.toString();
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -24,115 +52,122 @@ class Homepage extends StatelessWidget{
         centerTitle: true
       
       ),
-      body: SingleChildScrollView(
-        child: Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-            SizedBox(
-              height: 50,
-            ),
-            new_diary_button(context),
-            SizedBox(
-              height: 60,
-            ),
-            SizedBox(
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [ 
-                    SizedBox(
-                      width: 130,
-                      height: 130,
-                      child: 
-                        ElevatedButton(
-                            onPressed: null,
-                            style: ElevatedButton.styleFrom(
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(10), // Adjust the radius as needed
-                              ),
-                            ), 
-                            child: Text('test')
-                            
-                            ), 
-                    ),
-                    SizedBox(
-                      width: 40,
-                    ),
-                    SizedBox(
-                      width: 130,
-                      height: 130,
-                      child: 
-                        ElevatedButton(
-                            onPressed: null, 
-                            style: ElevatedButton.styleFrom(
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(10), 
-                              ),
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          double maxWidth = constraints.maxWidth * 0.8;
+          return SingleChildScrollView(
+            child: Center(
+              child: Column(
+                children: [
+              SizedBox(
+                height: 50,
+              ),
+              new_diary_button(context, width: maxWidth),
+              SizedBox(
+                height: 60,
+              ),
+              SizedBox(
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [ 
+                      SizedBox(
+                        width: maxWidth * 0.4,
+                        height: maxWidth * 0.4,
+                        child: 
+                          Ink(
+                            child: ElevatedButton(
+                              onPressed: null,
+                              style: ElevatedButton.styleFrom(
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(10), // Adjust the radius as needed
+                                ),
+                              ), 
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(Icons.local_fire_department_rounded, color: Colors.red, size: maxWidth * 0.15,),
+                                  Text(streak, style: TextStyle(fontSize: maxWidth * 0.1, color: Colors.red)),
+                                ],
+                              )
                             ),
-                            child: Text('test'),
-                        ),
-                    ),
-                  ]
-                
+                          ), 
+                      ),
+                      SizedBox(
+                        width: 40,
+                      ),
+                      SizedBox(
+                        width: maxWidth * 0.4,
+                        height: maxWidth * 0.6,
+                        child: 
+                          ElevatedButton(
+                              onPressed: null, 
+                              style: ElevatedButton.styleFrom(
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(10), 
+                                ),
+                              ),
+                              child: Text('test'),
+                          ),
+                      ),
+                    ]
+                  
+                ),
+              ),
+              SizedBox(
+                height: 40,
+              ),
+              SizedBox(
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [ 
+                      SizedBox(
+                        width: 130,
+                        height: 130,
+                        child: 
+                          ElevatedButton(
+                              onPressed: null,
+                              style: ElevatedButton.styleFrom(
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(10), 
+                                ),
+                              ), 
+                              child: Text('test')
+                              
+                              ), 
+                      ),
+                      SizedBox(
+                        width: 40,
+                      ),
+                      SizedBox(
+                        width: 130,
+                        height: 130,
+                        child: 
+                          ElevatedButton(
+                              onPressed: null, 
+                              style: ElevatedButton.styleFrom(
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                              ),
+                              child: Text('test'),
+                          ),
+                      ),
+                    ]
+                  ),
+                ),
+                ],
               ),
             ),
-             SizedBox(
-              height: 40,
-            ),
-            SizedBox(
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [ 
-                    SizedBox(
-                      width: 130,
-                      height: 130,
-                      child: 
-                        ElevatedButton(
-                            onPressed: null,
-                            style: ElevatedButton.styleFrom(
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(10), 
-                              ),
-                            ), 
-                            child: Text('test')
-                            
-                            ), 
-                    ),
-                    SizedBox(
-                      width: 40,
-                    ),
-                    SizedBox(
-                      width: 130,
-                      height: 130,
-                      child: 
-                        ElevatedButton(
-                            onPressed: null, 
-                            style: ElevatedButton.styleFrom(
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                            ),
-                            child: Text('test'),
-                        ),
-                    ),
-                  ]
-                
-              ),
-            ),
-              
-             
-           
-            ],
-          ),
-        ),
+          );
+        }
       ),
     );
   }
 
-  SizedBox new_diary_button(BuildContext context) {
+  SizedBox new_diary_button(BuildContext context, {required double width}) {
     return SizedBox(
             height: 180,
-            width: 300,
+            width: width,
             child: 
               ElevatedButton(
                 onPressed: () {
@@ -142,11 +177,13 @@ class Homepage extends StatelessWidget{
                   );
                 },
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Color(0xffF9F6EE),
-                  foregroundColor: Colors.black,
+                  backgroundColor: Color(0xfffffaf0),
+                  foregroundColor: const Color.fromARGB(255, 61, 61, 61),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(10), // Adjust the radius as needed
                   ),
+                  elevation: 6,
+                  shadowColor: Color.fromARGB(255, 161, 161, 161)
                 ),
                 child:Column(
                   mainAxisAlignment: MainAxisAlignment.center,
