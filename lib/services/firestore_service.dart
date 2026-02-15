@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/material.dart';
 import 'models/diary_entry_model.dart';
 import 'models/user_model.dart';
 
@@ -78,16 +79,26 @@ class FirestoreService {
   /// Update user streak and total diary posted
   Future<void> updateStreakAndDiaryCount({
     required String uid,
-    required int streak,
-    required int totalDiaryPosted,
-    required DateTime lastPostDate,
+    required DateTime date,
   }) async {
     try {
-      await usersCollection.doc(uid).update({
-        'streak': streak,
-        'totalDiaryPosted': totalDiaryPosted,
-        'lastPostDate': Timestamp.fromDate(lastPostDate),
-      });
+      final userData = await getUserData(uid);
+      if (userData?.lastPostDate == null){
+        await incrementUserStreak(uid);
+      } else {
+        final lastPostDate = userData!.lastPostDate;
+        bool isSameDay = lastPostDate != null && DateUtils.isSameDay(date, lastPostDate);
+          if (!isSameDay) {
+          final differenceInDays = date.difference(lastPostDate!).inDays;
+          if (differenceInDays == 1) {
+            await incrementUserStreak(uid);
+          } 
+          else if (differenceInDays > 1) {
+            await resetUserStreak(uid);
+          }
+        }
+      }
+      await incrementDiaryPostCount(uid);
     } catch (e) {
       rethrow;
     }
@@ -137,24 +148,25 @@ class FirestoreService {
     }
   }
 
+  Future<void> updateLastPostDate(String uid, DateTime date) async {
+    try {
+      await usersCollection.doc(uid).update({
+        'lastPostDate': Timestamp.fromDate(date),
+      });
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+
   // ==================== DIARY ENTRIES OPERATIONS ====================
 
   /// Add a new diary entry
   Future<String> addDiaryEntry(DiaryEntryModel entry, DateTime date) async {
     try {
-      final user = await getUserData(entry.userId);
       final docRef = await diaryEntriesCollection.add(entry.toFireStore());
-
-      await incrementDiaryPostCount(entry.userId);
-      if (user?.lastPostDate == null){
-        await incrementUserStreak(entry.userId);
-      } else {
-        final lastPostDate = user!.lastPostDate!;
-        final differenceInDays = date.difference(lastPostDate).inDays;
-        if (differenceInDays == 1) {
-          await incrementUserStreak(entry.userId);
-        } 
-      }
+      // update user's last post date
+      await updateLastPostDate(entry.userId, date);
       return docRef.id;
     } catch (e) {
       rethrow;

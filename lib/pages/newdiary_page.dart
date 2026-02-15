@@ -16,14 +16,17 @@ class NewDiary extends StatefulWidget{
 class _NewDiaryState extends State<NewDiary> {
   final List<File> _images = [];
   final ImagePicker _picker = ImagePicker();
+
   final _firestoreService = FirestoreService();
   final _firebaseStorageService = FirebaseStorageService();
   final _userId = FirebaseAuth.instance.currentUser!.uid;
+
   final DateTime date = DateTime.now();
   bool isLoading = false;
   List<String> imageUrls = [];
-  String _id = '';
   List<File> pickedImages = [];
+  String _id = '';
+  
 
 
   final TextEditingController _diaryController = TextEditingController();
@@ -42,6 +45,7 @@ class _NewDiaryState extends State<NewDiary> {
 
   void createNewDiary(String context) async {
     try {
+      _firestoreService.updateStreakAndDiaryCount(uid: _userId, date: date);
       _id = await _firestoreService.createDiaryEntry(
         userId: _userId,
         context: context,
@@ -53,7 +57,7 @@ class _NewDiaryState extends State<NewDiary> {
     }
   }
 
-  void updateDiary(String context) async {
+  Future<void> updateDiary(String context) async {
     try {
       await _firestoreService.updateDiaryEntryContext(
         entryId: _id,
@@ -310,7 +314,7 @@ class _NewDiaryState extends State<NewDiary> {
               maxLines: null,
               expands: true,
               decoration: InputDecoration(
-                hintText: "Write your diary entry here...",
+                hintText: "Write here...",
                 contentPadding: EdgeInsets.all(16),
                 border: InputBorder.none,
               ),
