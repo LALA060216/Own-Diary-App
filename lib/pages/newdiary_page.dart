@@ -7,13 +7,15 @@ import 'package:diaryapp/services/firebase_storage_service.dart';
 // 魔丸
 
 class NewDiary extends StatefulWidget{
-  const NewDiary({super.key});
+  final XFile? imageFile;
+   NewDiary({super.key, this.imageFile});
 
   @override
   State<NewDiary> createState() => _NewDiaryState();
 }
 
 class _NewDiaryState extends State<NewDiary> {
+
   final List<File> _images = [];
   final ImagePicker _picker = ImagePicker();
 
@@ -27,6 +29,7 @@ class _NewDiaryState extends State<NewDiary> {
   List<String> imageUrls = [];
   List<File> pickedImages = [];
   String _id = '';
+  bool cam = false;
   
 
 
@@ -38,6 +41,15 @@ class _NewDiaryState extends State<NewDiary> {
   @override
   void initState() {
     super.initState();
+    if (widget.imageFile != null) {
+      setState(() {
+        _images.add(File(widget.imageFile!.path));
+        cam = true;
+      });
+      
+      createNewDiary();
+      uploadImages(cam);
+    }
     _diaryController.addListener(() async {
       if (_images.isEmpty && _diaryController.text.length == 1 && !created) {
         createNewDiary();
@@ -49,7 +61,9 @@ class _NewDiaryState extends State<NewDiary> {
       } else if (_diaryController.text.isNotEmpty) {
         aupdateDiary(_diaryController.text);
       }
-    });
+      
+    }
+    );
   }
 
   void createNewDiary() async {
@@ -92,10 +106,11 @@ class _NewDiaryState extends State<NewDiary> {
     }
   }
 
-  Future<Null> uploadImages() async {
+  Future<Null> uploadImages(bool cam) async {
     setState(() {
       isLoading = true;
     });
+    if (!cam) {
 
     for (int i = 0; i < pickedImages.length; i++) {
       String? url = await _firebaseStorageService.uploadImage(pickedImages[i], _userId, _id);
@@ -107,6 +122,18 @@ class _NewDiaryState extends State<NewDiary> {
         break;
       }
     }
+    } else {
+    if (widget.imageFile != null) {
+      String? url = await _firebaseStorageService.uploadImage(File(widget.imageFile!.path), _userId, _id);
+      if (url != null) {
+        imageUrls.add(url);
+      }
+      else {
+        error = true;
+      }
+    }
+    }
+
     updateImageUrls();
   }
 
@@ -122,7 +149,7 @@ class _NewDiaryState extends State<NewDiary> {
       if (_images.isNotEmpty && _id.isEmpty) {
         createNewDiary();
       }
-      uploadImages();
+      uploadImages(false);
     });
   }
 

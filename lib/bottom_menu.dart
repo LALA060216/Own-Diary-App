@@ -4,6 +4,7 @@ import 'pages/home_page.dart';
 import 'pages/profile_page.dart';
 import 'pages/diary_sum.dart';
 import 'pages/ai_summary.dart';
+import 'pages/camera_page.dart';
 
 class BottomMenu extends StatefulWidget{
   const BottomMenu({super.key});
@@ -48,7 +49,12 @@ class _Bottommenustate extends State<BottomMenu>{
       extendBody: true,
       body: _pages[cindex],
       floatingActionButton: FloatingActionButton(
-        onPressed: null,
+        onPressed: () {
+          Navigator.push(
+            context, 
+            MaterialPageRoute(builder: (context) => CameraPage())
+          );
+        },
         backgroundColor: Color(0xffF9F6EE),
         elevation: 2,
         shape: CircleBorder(),

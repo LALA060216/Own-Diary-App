@@ -2,9 +2,12 @@ import 'package:diaryapp/services/auth/auth_gate.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
+import 'package:camera/camera.dart';
 
+late List<CameraDescription> cameras;
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  cameras = await availableCameras();
 
   try{
     // Initialize Firebase
@@ -14,6 +17,7 @@ void main() async {
   } catch (e) {
     print('Firebase initialization error: $e');
   }
+  
   runApp(const MyApp());
 }
 
