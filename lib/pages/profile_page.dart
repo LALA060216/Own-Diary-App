@@ -158,7 +158,7 @@ class _ProfilePageState extends State<ProfilePage> {
                           ),
                         ),
                         Text(
-                          "0",
+                          currentUserModel?.streak.toString() ?? "-",
                           style: TextStyle(
                             color: Colors.black,
                             fontSize: 16,
@@ -199,7 +199,7 @@ class _ProfilePageState extends State<ProfilePage> {
                           ),
                         ),
                         Text(
-                          "0",
+                          currentUserModel?.totalDiaryPosted.toString() ?? "-",
                           style: TextStyle(
                             color: Colors.black,
                             fontSize: 16,
