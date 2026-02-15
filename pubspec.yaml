@@ -69,6 +69,8 @@ flutter:
         - asset: assets\fonts\LobsterTwo-Bold.ttf
         - asset: assets\fonts\LobsterTwo-Italic.ttf
         - asset: assets\fonts\LobsterTwo-Regular.ttf
+  assets:   
+    - assets\images\simple_abstract_background_6819442.jpg
 
   # To add assets to your application, add an assets section, like this:
   # assets:

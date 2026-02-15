@@ -75,18 +75,26 @@ class _HomepageState extends State<Homepage> {
                         height: maxWidth * 0.4,
                         child: 
                           Ink(
+                            decoration: BoxDecoration(
+                              image: DecorationImage(
+                                image: AssetImage('assets/images/simple_abstract_background_6819442.jpg'),
+                                fit: BoxFit.contain,
+                              ),
+                              borderRadius: BorderRadius.circular(30),
+                            ),
                             child: ElevatedButton(
                               onPressed: null,
                               style: ElevatedButton.styleFrom(
                                 shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(10), // Adjust the radius as needed
+                                  borderRadius: BorderRadius.circular(30), // Adjust the radius as needed
                                 ),
                               ), 
                               child: Column(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
-                                  Icon(Icons.local_fire_department_rounded, color: Colors.red, size: maxWidth * 0.15,),
-                                  Text(streak, style: TextStyle(fontSize: maxWidth * 0.1, color: Colors.red)),
+                                  Icon(Icons.local_fire_department_rounded, color: const Color.fromARGB(255, 255, 255, 255), size: maxWidth * 0.18),
+                                  Text(streak, style: TextStyle(fontSize: maxWidth * 0.1, color: const Color.fromARGB(255, 255, 255, 255))),
+                                  Text('days', style: TextStyle(fontSize: maxWidth * 0.04, color: const Color.fromARGB(255, 255, 255, 255), height: -0.5)),
                                 ],
                               )
                             ),
