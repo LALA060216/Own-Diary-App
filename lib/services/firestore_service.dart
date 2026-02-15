@@ -147,15 +147,13 @@ class FirestoreService {
 
       await incrementDiaryPostCount(entry.userId);
       if (user?.lastPostDate == null){
-        incrementDiaryPostCount(entry.userId);
+        await incrementUserStreak(entry.userId);
       } else {
         final lastPostDate = user!.lastPostDate!;
         final differenceInDays = date.difference(lastPostDate).inDays;
         if (differenceInDays == 1) {
           await incrementUserStreak(entry.userId);
-        } else if (differenceInDays > 1) {
-          await resetUserStreak(entry.userId);
-        }
+        } 
       }
       return docRef.id;
     } catch (e) {
