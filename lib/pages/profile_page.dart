@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:diaryapp/services/models/user_model.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -15,6 +16,7 @@ class _ProfilePageState extends State<ProfilePage> {
 
   final FirestoreService _firestoreService = FirestoreService();
   UserModel? currentUserModel;
+  StreamSubscription<UserModel?>? _userSubscription;
   
   Stream<UserModel?> fetchUserData() {
     String? userId = FirebaseAuth.instance.currentUser?.uid;
@@ -26,19 +28,25 @@ class _ProfilePageState extends State<ProfilePage> {
   @override
   void initState() {
     super.initState();
-    fetchUserData().listen((userModel) {
+    _userSubscription = fetchUserData().listen((userModel) {
+      if (!mounted) {
+        return;
+      }
       setState(() {
         currentUserModel = userModel;
       });
     });
   }
 
-  
+  @override
+  void dispose() {
+    _userSubscription?.cancel();
+    super.dispose();
+  }
 
   @override
   
   Widget build(BuildContext context) {
-    fetchUserData();
     return Scaffold(
       appBar: AppBar(
         backgroundColor: Color(0xfffffaf0),
