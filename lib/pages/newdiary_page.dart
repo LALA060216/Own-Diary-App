@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:diaryapp/services/firebase_storage_service.dart';
+import 'camera_page.dart';
 // 魔丸
 
 class NewDiary extends StatefulWidget{
@@ -36,6 +37,8 @@ class _NewDiaryState extends State<NewDiary> {
   final TextEditingController _diaryController = TextEditingController();
   bool error = false;
   String errorMessage = "Failed to upload image";
+
+
 
   // initialize controller listenable
   @override
@@ -112,26 +115,27 @@ class _NewDiaryState extends State<NewDiary> {
     });
     if (!cam) {
 
-    for (int i = 0; i < pickedImages.length; i++) {
-      String? url = await _firebaseStorageService.uploadImage(pickedImages[i], _userId, _id);
-      if (url != null) {
-        imageUrls.add(url);
-      }
-      else {
-        error = true;
-        break;
-      }
+      for (int i = 0; i < pickedImages.length; i++) {
+        String? url = await _firebaseStorageService.uploadImage(pickedImages[i], _userId, _id);
+        if (url != null) {
+          imageUrls.add(url);
+        }
+        else {
+          error = true;
+          break;
+        }
     }
+    pickedImages.clear();
     } else {
-    if (widget.imageFile != null) {
-      String? url = await _firebaseStorageService.uploadImage(File(widget.imageFile!.path), _userId, _id);
-      if (url != null) {
-        imageUrls.add(url);
+      if (widget.imageFile != null) {
+        String? url = await _firebaseStorageService.uploadImage(File(widget.imageFile!.path), _userId, _id);
+        if (url != null) {
+          imageUrls.add(url);
+        }
+        else {
+          error = true;
+        }
       }
-      else {
-        error = true;
-      }
-    }
     }
 
     updateImageUrls();
@@ -150,6 +154,7 @@ class _NewDiaryState extends State<NewDiary> {
         createNewDiary();
       }
       uploadImages(false);
+      
     });
   }
 
@@ -162,6 +167,23 @@ class _NewDiaryState extends State<NewDiary> {
     });
 
   }
+
+  Future<void> openCameraPageAndUpload() async {
+    final capturedImage = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => CameraPage(fromNewDiary: true),
+      ),
+    );
+
+    if (capturedImage != null) {
+      setState(() {
+        _images.add(File(capturedImage.path)); 
+        pickedImages.add(File(capturedImage.path));  
+      });
+      uploadImages(false);
+    }
+}
 
   @override
   void dispose() {
@@ -294,7 +316,12 @@ class _NewDiaryState extends State<NewDiary> {
                       height: 1,
                       color: Color(0xffEDEADE),
                     ),
-                    Icon(Icons.camera)
+                    GestureDetector(
+                      onTap: () async {
+                        await openCameraPageAndUpload();
+                      },
+                      child: Icon(Icons.camera_alt, size: 30, color: Colors.black54),
+                    )
                   ],
                 ),
               ),
