@@ -105,7 +105,7 @@ Future<bool?> showDeleteConfirmationDialog(BuildContext context) {
               child: Material(
                 color: Colors.transparent,
                 child: SizedBox(
-                  height: 100,
+                  height: 55,
                   child: Row(
                     children: [
                       Expanded(
