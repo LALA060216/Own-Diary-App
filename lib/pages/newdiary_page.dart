@@ -9,7 +9,7 @@ import 'camera_page.dart';
 
 class NewDiary extends StatefulWidget{
   final XFile? imageFile;
-   NewDiary({super.key, this.imageFile});
+  const NewDiary({super.key, this.imageFile});
 
   @override
   State<NewDiary> createState() => _NewDiaryState();
@@ -47,11 +47,12 @@ class _NewDiaryState extends State<NewDiary> {
     if (widget.imageFile != null) {
       setState(() {
         _images.add(File(widget.imageFile!.path));
-        cam = true;
+        pickedImages.add(File(widget.imageFile!.path));
       });
       
       createNewDiary();
-      uploadImages(cam);
+      created = true;
+      uploadImages();
     }
     _diaryController.addListener(() async {
       if (_images.isEmpty && _diaryController.text.length == 1 && !created) {
@@ -109,35 +110,21 @@ class _NewDiaryState extends State<NewDiary> {
     }
   }
 
-  Future<Null> uploadImages(bool cam) async {
+  Future<Null> uploadImages() async {
     setState(() {
       isLoading = true;
     });
-    if (!cam) {
-
-      for (int i = 0; i < pickedImages.length; i++) {
-        String? url = await _firebaseStorageService.uploadImage(pickedImages[i], _userId, _id);
-        if (url != null) {
-          imageUrls.add(url);
-        }
-        else {
-          error = true;
-          break;
-        }
-    }
-    pickedImages.clear();
-    } else {
-      if (widget.imageFile != null) {
-        String? url = await _firebaseStorageService.uploadImage(File(widget.imageFile!.path), _userId, _id);
-        if (url != null) {
-          imageUrls.add(url);
-        }
-        else {
-          error = true;
-        }
+    for (int i = 0; i < pickedImages.length; i++) {
+      String? url = await _firebaseStorageService.uploadImage(pickedImages[i], _userId, _id);
+      if (url != null) {
+        imageUrls.add(url);
+      }
+      else {
+        error = true;
+        break;
       }
     }
-
+    pickedImages.clear();
     updateImageUrls();
   }
 
@@ -153,7 +140,7 @@ class _NewDiaryState extends State<NewDiary> {
       if (_images.isNotEmpty && _id.isEmpty) {
         createNewDiary();
       }
-      uploadImages(false);
+      uploadImages();
       
     });
   }
@@ -181,9 +168,9 @@ class _NewDiaryState extends State<NewDiary> {
         _images.add(File(capturedImage.path)); 
         pickedImages.add(File(capturedImage.path));  
       });
-      uploadImages(false);
+      uploadImages();
     }
-}
+  }
 
   @override
   void dispose() {
