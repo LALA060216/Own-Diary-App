@@ -65,6 +65,111 @@ class _DiariesState extends State<Diaries> {
       );
     }
 
+Future<bool?> showDeleteConfirmationDialog(BuildContext context) {
+  return showDialog<bool>(
+    context: context,
+    barrierDismissible: true, // allow tap outside to dismiss
+    builder: (context) {
+      return Dialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+        backgroundColor: const Color(0xFFF5F5F5), // subtle off‑white
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(height: 20),
+            const Text(
+              'Delete diary?',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 12),
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 24.0),
+              child: Text(
+                'This diary entry will be permanently deleted.',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 14, color: Colors.grey),
+              ),
+            ),
+            const SizedBox(height: 20),
+            const Divider(height: 1, thickness: 1),
+            // Row with two actions and vertical divider
+            ClipRRect(
+              borderRadius: const BorderRadius.vertical(
+                bottom: Radius.circular(12),
+              ),
+              child: Material(
+                color: Colors.transparent,
+                child: SizedBox(
+                  height: 100,
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: InkWell(
+                          borderRadius: const BorderRadius.only(
+                            bottomLeft: Radius.circular(12),
+                          ),
+                            onTap: () =>
+                                Navigator.of(context).pop(false),
+                            child: const Center(
+                              child: Text(
+                                'Cancel',
+                                style: TextStyle(
+                                  color: Colors.blue,
+                                  fontSize: 16,
+                                ),
+                              ),
+                            ),
+                        ),
+                      ),
+
+                        Container(
+                          width: 1,
+                          height: double.infinity,
+                          color: Colors.grey.shade300,
+                        ),
+                      Expanded(
+                        child: TextButton(
+                          style: TextButton.styleFrom(
+                            padding: EdgeInsets.zero, 
+                            shape: const RoundedRectangleBorder(
+                              borderRadius: BorderRadius.zero,
+                            ),
+                          ),
+                          onPressed: () {
+                            Navigator.of(context).pop(true);
+                          },
+                          child: InkWell(
+                            borderRadius: const BorderRadius.only(
+                              bottomRight: Radius.circular(12),
+                            ),
+                            onTap:() => 
+                              Navigator.of(context).pop(true),
+                            child: const Center(
+                              child: Text(
+                                'Delete',
+                                style: TextStyle(color: Colors.red, fontSize: 16),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                )
+              ),
+            ),
+          ],
+        ),
+      );
+    },
+  );
+}
+
     return Scaffold(
       backgroundColor: const Color(0xfff5f5f5),
 
@@ -178,7 +283,6 @@ class _DiariesState extends State<Diaries> {
                       child: Text("No diaries yet"));
                 }
 
-                // Filter by selected month
                 final diaries =
                     snapshot.data!.where((d) {
                   return d.created.month ==
@@ -236,7 +340,10 @@ class _DiariesState extends State<Diaries> {
                                     IconButton(
                                       icon: const Icon(Icons.delete, color: Color(0xFF483D3C)),
                                       onPressed: () async {
-                                        await firestoreService.deleteDiaryEntry(diary.id, userId!);
+                                        final bool? confirm = await showDeleteConfirmationDialog(context);
+                                        if (confirm == true) {
+                                          await firestoreService.deleteDiaryEntry(diary.id, userId!);
+                                        }
                                       },
                                     ),
                                   ],
