@@ -4,7 +4,8 @@ import 'package:diaryapp/main.dart';
 import 'package:diaryapp/pages/newdiary_page.dart' ;
 
 class CameraPage extends StatefulWidget {
-  const CameraPage({super.key});
+  final bool? fromNewDiary;
+  const CameraPage({super.key, this.fromNewDiary});
 
   @override
   State<CameraPage> createState() => _CameraPageState();
@@ -57,14 +58,20 @@ class _CameraPageState extends State<CameraPage> {
             await _initializeControllerFuture;
             final image = await _controller.takePicture();
             if (!mounted) return;
+            if (widget.fromNewDiary != null) {
+              Navigator.pop(context, image);
+            }else{
             Navigator.pushReplacement(
               context, 
               MaterialPageRoute(
                 builder: (context) => NewDiary(imageFile: image)
               )
             );
+            }
           } catch (e) {
-            print('Error capturing image: $e');
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('Error capturing image: $e')),
+            );
           }
         },
         child: const Icon(Icons.camera_alt),
