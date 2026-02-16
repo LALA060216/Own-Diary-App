@@ -1,7 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'models/diary_entry_model.dart';
-import 'models/unfinish_entry_model.dart';
 import 'models/user_model.dart';
 
 class FirestoreService {

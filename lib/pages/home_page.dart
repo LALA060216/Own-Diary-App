@@ -2,6 +2,7 @@ import 'package:diaryapp/services/firestore_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'newdiary_page.dart';
 
 class Homepage extends StatefulWidget {
@@ -71,14 +72,25 @@ class _HomepageState extends State<Homepage> {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [ 
                       SizedBox(
-                        width: maxWidth * 0.4,
-                        height: maxWidth * 0.4,
-                        child: 
-                          Ink(
+                        width: maxWidth * 0.45,
+                        height: maxWidth * 0.45,
+                        child: Container(
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(30),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Color.fromARGB(80, 162, 74, 30),
+                                blurRadius: 20,
+                                spreadRadius: 2,
+                                offset: Offset(0, 15),
+                              ),
+                            ],
+                          ),
+                          child: Ink(
                             decoration: BoxDecoration(
                               image: DecorationImage(
                                 image: AssetImage('assets/images/simple_abstract_background_6819442.jpg'),
-                                fit: BoxFit.contain,
+                                fit: BoxFit.cover,
                               ),
                               borderRadius: BorderRadius.circular(30),
                             ),
@@ -86,39 +98,74 @@ class _HomepageState extends State<Homepage> {
                               onPressed: null,
                               style: ElevatedButton.styleFrom(
                                 shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(30), // Adjust the radius as needed
+                                  borderRadius: BorderRadius.circular(30),
                                 ),
+                                elevation: 0,
                               ), 
                               child: Column(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
                                   Icon(Icons.local_fire_department_rounded, color: const Color.fromARGB(255, 255, 255, 255), size: maxWidth * 0.18),
-                                  Text(streak, style: TextStyle(fontSize: maxWidth * 0.1, color: const Color.fromARGB(255, 255, 255, 255))),
-                                  Text('days', style: TextStyle(fontSize: maxWidth * 0.04, color: const Color.fromARGB(255, 255, 255, 255), height: -0.5)),
+                                  Text(streak, style: TextStyle(fontSize: maxWidth * 0.1, color: const Color.fromARGB(255, 255, 255, 255), fontWeight: FontWeight.bold)),
                                 ],
                               )
                             ),
-                          ), 
+                          ),
+                        ),
                       ),
                       SizedBox(
                         width: 40,
                       ),
                       SizedBox(
-                        width: maxWidth * 0.4,
-                        height: maxWidth * 0.6,
-                        child: 
-                          ElevatedButton(
-                              onPressed: null, 
+                        width: maxWidth * 0.45,
+                        height: maxWidth * 0.45,
+                        child: Container(
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(30),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Color.fromARGB(97, 40, 40, 40),
+                                blurRadius: 20,
+                                spreadRadius: 2,
+                                offset: Offset(0, 10),
+                              ),
+                              BoxShadow(
+                                color: Color.fromARGB(80, 100, 200, 150),
+                                blurRadius: 20,
+                                spreadRadius: 2,
+                                offset: Offset(0, 15),
+                              ),
+                            ],
+                          ),
+                          child: Ink(
+                            decoration: BoxDecoration(
+                              image: DecorationImage(
+                                image: AssetImage('assets/images/green_background.jpg'),
+                                fit: BoxFit.cover,
+                              ),
+                              borderRadius: BorderRadius.circular(30),
+                            ),
+                            child: ElevatedButton(
+                              onPressed: null,
                               style: ElevatedButton.styleFrom(
                                 shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(10), 
+                                  borderRadius: BorderRadius.circular(30),
                                 ),
-                              ),
-                              child: Text('test'),
+                                elevation: 0,
+                              ), 
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(FontAwesomeIcons.heartPulse, color: const Color.fromARGB(255, 255, 255, 255), size: maxWidth * 0.15), 
+                                  Padding(padding:  EdgeInsets.only(bottom: maxWidth * 0.02)), 
+                                  Text('Good', style: TextStyle(fontSize: maxWidth * 0.1, color: const Color.fromARGB(255, 255, 255, 255), fontWeight: FontWeight.bold)),
+                                ],
+                              )
+                            ),
                           ),
+                        ),
                       ),
                     ]
-                  
                 ),
               ),
               SizedBox(
@@ -129,36 +176,109 @@ class _HomepageState extends State<Homepage> {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [ 
                       SizedBox(
-                        width: 130,
-                        height: 130,
-                        child: 
-                          ElevatedButton(
+                        width: maxWidth * 0.45,
+                        height: maxWidth * 0.45,
+                        child: Container(
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(30),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Color.fromARGB(100, 0, 0, 0),
+                                blurRadius: 20,
+                                spreadRadius: 2,
+                                offset: Offset(0, 10),
+                              ),
+                              BoxShadow(
+                                color: Color.fromARGB(80, 150, 100, 200),
+                                blurRadius: 15,
+                                spreadRadius: 1,
+                                offset: Offset(0, 5),
+                              ),
+                            ],
+                          ),
+                          child: Ink(
+                            decoration: BoxDecoration(
+                              image: DecorationImage(
+                                image: AssetImage('assets/images/purple_background.jpg'),
+                                fit: BoxFit.cover,
+                              ),
+                              borderRadius: BorderRadius.circular(30),
+                            ),
+                            child: ElevatedButton(
                               onPressed: null,
                               style: ElevatedButton.styleFrom(
                                 shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(10), 
+                                  borderRadius: BorderRadius.circular(30),
                                 ),
+                                elevation: 0,
+                                shadowColor: Colors.transparent,
+                                backgroundColor: Colors.transparent,
                               ), 
-                              child: Text('test')
-                              
-                              ), 
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(FontAwesomeIcons.sadTear, color: const Color.fromARGB(255, 255, 255, 255), size: maxWidth * 0.15), 
+                                  Padding(padding:  EdgeInsets.only(bottom: maxWidth * 0.02)), 
+                                  Text('Sad', style: TextStyle(fontSize: maxWidth * 0.1, color: const Color.fromARGB(255, 255, 255, 255), fontWeight: FontWeight.bold)),
+                                ],
+                              )
+                            ),
+                          ),
+                        ),
                       ),
                       SizedBox(
                         width: 40,
                       ),
                       SizedBox(
-                        width: 130,
-                        height: 130,
-                        child: 
-                          ElevatedButton(
-                              onPressed: null, 
+                        width: maxWidth * 0.45,
+                        height: maxWidth * 0.45,
+                        child: Container(
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(30),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Color.fromARGB(100, 0, 0, 0),
+                                blurRadius: 20,
+                                spreadRadius: 2,
+                                offset: Offset(0, 10),
+                              ),
+                              BoxShadow(
+                                color: Color.fromARGB(80, 200, 180, 100),
+                                blurRadius: 15,
+                                spreadRadius: 1,
+                                offset: Offset(0, 5),
+                              ),
+                            ],
+                          ),
+                          child: Ink(
+                            decoration: BoxDecoration(
+                              image: DecorationImage(
+                                image: AssetImage('assets/images/gold_background.jpg'),
+                                fit: BoxFit.cover,
+                              ),
+                              borderRadius: BorderRadius.circular(30),
+                            ),
+                            child: ElevatedButton(
+                              onPressed: null,
                               style: ElevatedButton.styleFrom(
                                 shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(10),
+                                  borderRadius: BorderRadius.circular(30),
                                 ),
-                              ),
-                              child: Text('test'),
+                                elevation: 0,
+                                shadowColor: Colors.transparent,
+                                backgroundColor: Colors.transparent,
+                              ), 
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(FontAwesomeIcons.moneyBills, color: const Color.fromARGB(255, 255, 255, 255), size: maxWidth * 0.15), 
+                                  Padding(padding:  EdgeInsets.only(bottom: maxWidth * 0.02)), 
+                                  Text('Wealth', style: TextStyle(fontSize: maxWidth * 0.09, color: const Color.fromARGB(255, 255, 255, 255), fontWeight: FontWeight.bold)),
+                                ],
+                              )
+                            ),
                           ),
+                        ),
                       ),
                     ]
                   ),

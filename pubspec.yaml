@@ -41,6 +41,7 @@ dependencies:
   firebase_auth: ^6.1.4
   firebase_storage: ^13.0.6
   camera: ^0.10.5+9
+  font_awesome_flutter: ^10.12.0
 
 dev_dependencies:
   flutter_test:
@@ -71,6 +72,9 @@ flutter:
         - asset: assets\fonts\LobsterTwo-Regular.ttf
   assets:   
     - assets\images\simple_abstract_background_6819442.jpg
+    - assets\images\green_background.jpg
+    - assets\images\purple_background.jpg
+    - assets\images\gold_background.jpg
 
   # To add assets to your application, add an assets section, like this:
   # assets:

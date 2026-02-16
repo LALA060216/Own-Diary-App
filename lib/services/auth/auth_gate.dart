@@ -1,9 +1,7 @@
 import 'package:diaryapp/services/auth/auth_service.dart';
 import 'package:diaryapp/bottom_menu.dart';
 import 'package:diaryapp/services/auth/pages/welcome_page.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:diaryapp/services/firestore_service.dart';
 
 
 class AuthGate extends StatelessWidget {
