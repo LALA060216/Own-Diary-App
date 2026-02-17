@@ -276,6 +276,23 @@ class FirestoreService {
       rethrow;
     }
   }
+
+  Future<DateTime?> getNewestDiaryDate(String userId) async {
+    try {
+      final snapshot = await diaryEntriesCollection
+          .where('userId', isEqualTo: userId)
+          .orderBy('created', descending: true)
+          .limit(1)
+          .get();
+      if (snapshot.docs.isNotEmpty) {
+        final newestDiary = DiaryEntryModel.fromFirestore(snapshot.docs.first);
+        return newestDiary.created;
+      }
+      return null;
+    } catch (e) {
+      rethrow;
+    }
+  }
 }
 
 

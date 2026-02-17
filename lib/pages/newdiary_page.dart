@@ -46,7 +46,6 @@ class _NewDiaryState extends State<NewDiary> {
         _images.add(File(widget.imageFile!.path));
         cam = true;
       });
-      
       createNewDiary();
       uploadImages(cam);
     }
@@ -54,14 +53,8 @@ class _NewDiaryState extends State<NewDiary> {
       if (_images.isEmpty && _diaryController.text.length == 1 && !created) {
         createNewDiary();
         created = true;
-      } else if (_diaryController.text.isEmpty && _images.isEmpty && created) {
-        await _firestoreService.deleteDiaryEntry(_id, _userId);
-        _id = '';
-        created = false;
-      } else if (_diaryController.text.isNotEmpty) {
-        aupdateDiary(_diaryController.text);
       }
-      
+      aupdateDiary(_diaryController.text);
     }
     );
   }

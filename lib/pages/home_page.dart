@@ -6,7 +6,8 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'newdiary_page.dart';
 
 class Homepage extends StatefulWidget {
-  const Homepage({super.key});
+  final bool createdNewDiaryToday;
+  const Homepage({super.key, required this.createdNewDiaryToday});
   
 
   @override
@@ -18,6 +19,7 @@ class _HomepageState extends State<Homepage> {
   FirestoreService firestoreService = FirestoreService();
   String userId = FirebaseAuth.instance.currentUser!.uid;
   String streak = '';
+  bool createdNewDiaryToday = false;
 
   @override
   void initState() {
@@ -35,6 +37,9 @@ class _HomepageState extends State<Homepage> {
 
   @override
   Widget build(BuildContext context) {
+    setState(() {
+      createdNewDiaryToday = widget.createdNewDiaryToday;
+    });
     return Scaffold(
       backgroundColor: Color(0xfff5f5f5),
       appBar: AppBar(
@@ -61,11 +66,21 @@ class _HomepageState extends State<Homepage> {
               child: Column(
                 children: [
               SizedBox(
-                height: 50,
+                height: 30,
               ),
               new_diary_button(context, width: maxWidth),
               SizedBox(
-                height: 60,
+                height: 30,
+              ),
+              if (createdNewDiaryToday) 
+                edit_diary_button(context, width: maxWidth)
+              else
+                Text(
+                  "You haven't created a diary today. Let's write one!",
+                  style: TextStyle(fontSize: 16, color: Colors.red),
+                ),
+              SizedBox(
+                height: 40,
               ),
               SizedBox(
                   child: Row(
@@ -169,7 +184,7 @@ class _HomepageState extends State<Homepage> {
                 ),
               ),
               SizedBox(
-                height: 40,
+                height: 20,
               ),
               SizedBox(
                   child: Row(
@@ -294,42 +309,83 @@ class _HomepageState extends State<Homepage> {
 
   SizedBox new_diary_button(BuildContext context, {required double width}) {
     return SizedBox(
-            height: 180,
-            width: width,
-            child: 
-              ElevatedButton(
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => NewDiary()),
-                  );
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Color(0xfffffaf0),
-                  foregroundColor: const Color.fromARGB(255, 61, 61, 61),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10), // Adjust the radius as needed
-                  ),
-                  elevation: 6,
-                  shadowColor: Color.fromARGB(255, 161, 161, 161)
-                ),
-                child:Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      Icons.add,
-                      size: 60,
-                    ),
-                    Text(
-                      'New Diary',
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontFamily: "Lobstertwo"
-                      ),
-                    ),
-                  ],
+      height: 180,
+      width: width,
+      child: 
+        ElevatedButton(
+          onPressed: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => NewDiary()),
+            );
+          },
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Color(0xfffffaf0),
+            foregroundColor: const Color.fromARGB(255, 61, 61, 61),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10), // Adjust the radius as needed
+            ),
+            elevation: 10,
+            shadowColor: Color.fromARGB(255, 161, 161, 161)
+          ),
+          child:Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.add,
+                size: 60,
+              ),
+              Text(
+                'New Diary',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontFamily: "Lobstertwo"
                 ),
               ),
-          );
+            ],
+          ),
+        ),
+    );
+  }
+
+  SizedBox edit_diary_button(BuildContext context, {required double width}) {
+    return SizedBox(
+      height: 110,
+      width: width,
+      child: 
+        ElevatedButton(
+          onPressed: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => NewDiary()),
+            );
+          },
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Color(0xfffffaf0),
+            foregroundColor: const Color.fromARGB(255, 61, 61, 61),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10), // Adjust the radius as needed
+            ),
+            elevation: 10,
+            shadowColor: Color.fromARGB(255, 161, 161, 161)
+          ),
+          child:Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.edit,
+                size: 50,
+              ),
+              Text(
+                'Edit Previous Diary',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontFamily: "Lobstertwo"
+                ),
+              ),
+            ],
+          ),
+        ),
+    );
   }
 }
