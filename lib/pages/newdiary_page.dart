@@ -49,10 +49,7 @@ class _NewDiaryState extends State<NewDiary> {
         _images.add(File(widget.imageFile!.path));
         pickedImages.add(File(widget.imageFile!.path));
       });
-      
-      createNewDiary();
-      created = true;
-      uploadImages();
+      createDiaryFromCam();
     }
     _diaryController.addListener(() async {
       if (_images.isEmpty && _diaryController.text.length == 1 && !created) {
@@ -70,7 +67,13 @@ class _NewDiaryState extends State<NewDiary> {
     );
   }
 
-  void createNewDiary() async {
+  Future<void> createDiaryFromCam() async {
+    await createNewDiary();
+    created = true;
+    await uploadImages();
+  }
+
+  Future<void> createNewDiary() async {
     try {
       _firestoreService.updateStreak(uid: _userId, date: date);
       _firestoreService.incrementDiaryPostCount(_userId);
