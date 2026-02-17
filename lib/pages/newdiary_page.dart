@@ -23,13 +23,14 @@ class _NewDiaryState extends State<NewDiary> {
   final _firestoreService = FirestoreService();
   final _firebaseStorageService = FirebaseStorageService();
   final _userId = FirebaseAuth.instance.currentUser!.uid;
-
+  
   final DateTime date = DateTime.now();
   bool isLoading = false;
   List<String> imageUrls = [];
   List<File> pickedImages = [];
   String _id = '';
   bool cam = false;
+  bool created = false;
   
 
 
@@ -49,8 +50,6 @@ class _NewDiaryState extends State<NewDiary> {
         pickedImages.add(File(widget.imageFile!.path));
       });
       createDiaryFromCam();
-      createNewDiary();
-      uploadImages(cam);
     }
     _diaryController.addListener(() async {
     if (_images.isEmpty && _diaryController.text.isEmpty) {
@@ -61,6 +60,32 @@ class _NewDiaryState extends State<NewDiary> {
       await aupdateDiary(_diaryController.text);
     });
       
+  }
+
+
+  //---------------------- Diary Creation and Delete ------------------//
+  Future<void> deleteDiary() async {
+    if (_id.isEmpty) return;
+    await _firestoreService.deleteDiaryEntry(_id, _userId);
+    created = false;
+    if (!mounted) return;
+    setState(() {
+      _id = '';
+    });
+  }
+
+  Future<void> waitDiaryCreate() async {
+    if (_id.isNotEmpty) return;
+    if (created) return;
+    if (_images.isEmpty && _diaryController.text.isEmpty) return;
+    created = true;
+    await createNewDiary();
+    
+  }
+
+  Future<void> createDiaryFromCam() async {
+    await createNewDiary();
+    await uploadImages();
   }
 
   Future<void> createNewDiary() async {
