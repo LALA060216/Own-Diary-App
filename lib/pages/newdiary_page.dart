@@ -26,7 +26,6 @@ class _NewDiaryState extends State<NewDiary> {
 
   final DateTime date = DateTime.now();
   bool isLoading = false;
-  bool created = false;
   List<String> imageUrls = [];
   List<File> pickedImages = [];
   String _id = '';
@@ -52,24 +51,37 @@ class _NewDiaryState extends State<NewDiary> {
       createDiaryFromCam();
     }
     _diaryController.addListener(() async {
-      if (_images.isEmpty && _diaryController.text.length == 1 && !created) {
-        createNewDiary();
-        created = true;
-      } else if (_diaryController.text.isEmpty && _images.isEmpty && created) {
-        await _firestoreService.deleteDiaryEntry(_id, _userId);
-        _id = '';
-        created = false;
-      } else if (_diaryController.text.isNotEmpty) {
-        aupdateDiary(_diaryController.text);
+      if (_images.isEmpty && _diaryController.text.isEmpty) {
+        await deleteDiary();
+        return;
       }
-      
+      await waitDiaryCreate();
+      await aupdateDiary(_diaryController.text);
+    });
+  }
+
+
+
+  //---------------------- Diary Creation and Delete ------------------//
+  Future<void> deleteDiary() async {
+    if (_id.isEmpty) return;
+    await _firestoreService.deleteDiaryEntry(_id, _userId);
+    setState(() {
+      _id = '';
+    });
+  }
+
+  Future<void> waitDiaryCreate() async {
+    if (_id.isNotEmpty) return;
+    if (_images.isEmpty && _diaryController.text.isEmpty) return;
+    await createNewDiary();
+    while (_id.isEmpty) {
+      await Future.delayed(Duration(milliseconds: 100));
     }
-    );
   }
 
   Future<void> createDiaryFromCam() async {
     await createNewDiary();
-    created = true;
     await uploadImages();
   }
 
@@ -88,47 +100,21 @@ class _NewDiaryState extends State<NewDiary> {
     }
   }
 
+
+
+  //---------------------- Diary Update and Image Upload ------------------//
+  
   Future<void> aupdateDiary(String context) async {
-    try {
-      await _firestoreService.updateDiaryEntryContext(
-        entryId: _id,
-        newContext: context,
-      );
-    } catch (e) {
-      error = true;
-    }
-  }
-
-  void updateImageUrls() async {
-    try {
-      await _firestoreService.updateDiaryEntryImageUrls(
-        entryId: _id,
-        newImageUrls: imageUrls,
-      );
-      setState(() {
-        isLoading = false;
-      });
-    } catch (e) {
-      rethrow;
-    }
-  }
-
-  Future<Null> uploadImages() async {
-    setState(() {
-      isLoading = true;
-    });
-    for (int i = 0; i < pickedImages.length; i++) {
-      String? url = await _firebaseStorageService.uploadImage(pickedImages[i], _userId, _id);
-      if (url != null) {
-        imageUrls.add(url);
-      }
-      else {
+    if (_images.isNotEmpty && _id.isNotEmpty || _diaryController.text.isNotEmpty && _id.isNotEmpty) {
+      try {
+        await _firestoreService.updateDiaryEntryContext(
+          entryId: _id,
+          newContext: context,
+        );
+      } catch (e) {
         error = true;
-        break;
       }
     }
-    pickedImages.clear();
-    updateImageUrls();
   }
 
   Future<void> pickImages() async {
@@ -140,22 +126,9 @@ class _NewDiaryState extends State<NewDiary> {
     setState(() {
       pickedImages = pickedFiles.map((file) => File(file.path)).toList();
       _images.addAll(pickedFiles.map((file) => File(file.path)));
-      if (_images.isNotEmpty && _id.isEmpty) {
-        createNewDiary();
-      }
-      uploadImages();
-      
-    });
-  }
-
-  void removeImageAt(int index) {
-    setState(() {
-      _firebaseStorageService.deleteImage(imageUrls[index]);
-      _images.removeAt(index);
-      imageUrls.removeAt(index);
-      updateImageUrls();
-    });
-
+    }
+    );
+    waitDiaryCreate().then((_) => uploadImages());
   }
 
   Future<void> openCameraPageAndUpload() async {
@@ -171,9 +144,55 @@ class _NewDiaryState extends State<NewDiary> {
         _images.add(File(capturedImage.path)); 
         pickedImages.add(File(capturedImage.path));  
       });
-      uploadImages();
+      waitDiaryCreate().then((_) => uploadImages());
     }
   }
+
+  Future<void> uploadImages() async {
+    setState(() {
+      isLoading = true;
+    });
+    for (int i = 0; i < pickedImages.length; i++) {
+      String? url = await _firebaseStorageService.uploadImage(pickedImages[i], _userId, _id);
+      if (url != null) {
+        imageUrls.add(url);
+      }
+      else {
+        error = true;
+        break;
+      }
+    }
+    pickedImages.clear();
+    await updateImageUrls();
+  }
+
+  Future<void> updateImageUrls() async {
+    try {
+      await _firestoreService.updateDiaryEntryImageUrls(
+        entryId: _id,
+        newImageUrls: imageUrls,
+      );
+      setState(() {
+        isLoading = false;
+      });
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  Future<void> removeImageAt(int index) async {
+    await _firebaseStorageService.deleteImage(imageUrls[index]);
+    setState(() {
+      _images.removeAt(index);
+      imageUrls.removeAt(index);
+    });
+    await updateImageUrls();
+    if (_images.isEmpty && _diaryController.text.isEmpty) {
+        await deleteDiary();
+    }
+  }
+
+
 
   @override
   void dispose() {
