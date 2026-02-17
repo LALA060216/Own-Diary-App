@@ -1,10 +1,12 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:diaryapp/services/firebase_storage_service.dart';
 import 'package:flutter/material.dart';
 import 'models/diary_entry_model.dart';
 import 'models/user_model.dart';
 
 class FirestoreService {
   final FirebaseFirestore firestore = FirebaseFirestore.instance;
+  final _firebaseStorageService = FirebaseStorageService();
 
   // User collection reference
   CollectionReference<Map<String, dynamic>> get usersCollection =>
@@ -222,9 +224,15 @@ class FirestoreService {
 
   /// Delete a diary entry
   Future<void> deleteDiaryEntry(String entryId, String userId) async {
+    final DiaryEntryModel? entry = await diaryEntriesCollection.doc(entryId).get().then((doc) => DiaryEntryModel.fromFirestore(doc));
     try {
       await diaryEntriesCollection.doc(entryId).delete();
       await decrementDiaryPostCount(userId);
+      if (entry != null && entry.imageUrls.isNotEmpty) {
+        for (final imageUrl in entry.imageUrls) {
+          await _firebaseStorageService.deleteImage(imageUrl);
+        }
+      }
     } catch (e) {
       rethrow;
     }
