@@ -60,12 +60,14 @@ class _NewDiaryState extends State<NewDiary> {
     });
   }
 
+  
 
 
   //---------------------- Diary Creation and Delete ------------------//
   Future<void> deleteDiary() async {
     if (_id.isEmpty) return;
     await _firestoreService.deleteDiaryEntry(_id, _userId);
+    if (!mounted) return;
     setState(() {
       _id = '';
     });
@@ -122,12 +124,11 @@ class _NewDiaryState extends State<NewDiary> {
     if (pickedFiles.isEmpty) {
       return;
     }
-
+    if (!mounted) return;
     setState(() {
-      pickedImages = pickedFiles.map((file) => File(file.path)).toList();
       _images.addAll(pickedFiles.map((file) => File(file.path)));
-    }
-    );
+    });
+    pickedImages = pickedFiles.map((file) => File(file.path)).toList();
     waitDiaryCreate().then((_) => uploadImages());
   }
 
@@ -140,18 +141,21 @@ class _NewDiaryState extends State<NewDiary> {
     );
 
     if (capturedImage != null) {
+      if (!mounted) return;
       setState(() {
-        _images.add(File(capturedImage.path)); 
-        pickedImages.add(File(capturedImage.path));  
+        _images.add(File(capturedImage.path));  
       });
+      pickedImages.add(File(capturedImage.path)); 
       waitDiaryCreate().then((_) => uploadImages());
     }
   }
 
   Future<void> uploadImages() async {
-    setState(() {
-      isLoading = true;
-    });
+    if (mounted) {
+      setState(() {
+        isLoading = true;
+      });
+    }
     for (int i = 0; i < pickedImages.length; i++) {
       String? url = await _firebaseStorageService.uploadImage(pickedImages[i], _userId, _id);
       if (url != null) {
@@ -172,6 +176,7 @@ class _NewDiaryState extends State<NewDiary> {
         entryId: _id,
         newImageUrls: imageUrls,
       );
+      if (!mounted) return;
       setState(() {
         isLoading = false;
       });
@@ -182,10 +187,14 @@ class _NewDiaryState extends State<NewDiary> {
 
   Future<void> removeImageAt(int index) async {
     await _firebaseStorageService.deleteImage(imageUrls[index]);
-    setState(() {
+    if (mounted) {
+      setState(() {
+        _images.removeAt(index);
+      });
+    } else {
       _images.removeAt(index);
-      imageUrls.removeAt(index);
-    });
+    }
+    imageUrls.removeAt(index);
     await updateImageUrls();
     if (_images.isEmpty && _diaryController.text.isEmpty) {
         await deleteDiary();
