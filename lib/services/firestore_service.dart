@@ -285,7 +285,7 @@ class FirestoreService {
     }
   }
 
-  Future<DateTime?> getNewestDiaryDate(String userId) async {
+  Future<DiaryEntryModel?> getNewestDiaryDetail(String userId) async {
     try {
       final snapshot = await diaryEntriesCollection
           .where('userId', isEqualTo: userId)
@@ -294,7 +294,7 @@ class FirestoreService {
           .get();
       if (snapshot.docs.isNotEmpty) {
         final newestDiary = DiaryEntryModel.fromFirestore(snapshot.docs.first);
-        return newestDiary.created;
+        return newestDiary;
       }
       return null;
     } catch (e) {

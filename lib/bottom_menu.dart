@@ -17,24 +17,14 @@ class BottomMenu extends StatefulWidget{
 
 class _Bottommenustate extends State<BottomMenu>{
   int cindex = 0;
-  bool createdNewDiaryToday = false;
   List<Widget> get _pages => [
-    Homepage(createdNewDiaryToday: createdNewDiaryToday),
+    Homepage(),
     Diaries(),
     AiSummary(),
     ProfilePage()
   ];
   final FirestoreService firestoreService = FirestoreService();
   String? userId = FirebaseAuth.instance.currentUser?.uid;
-
-
-  Future<void> _checkIfCreatedNewDiaryToday() async {
-    final newestDate = await firestoreService.getNewestDiaryDate(userId!);
-    if (!mounted) return;
-    setState(() {
-      createdNewDiaryToday = newestDate != null && DateUtils.isSameDay(newestDate, DateTime.now());
-    });
-  }
 
   Widget _navbutton({
     required int index,
@@ -58,7 +48,6 @@ class _Bottommenustate extends State<BottomMenu>{
 
   @override
   Widget build(BuildContext context) {
-    _checkIfCreatedNewDiaryToday();
     return Scaffold(
       extendBody: true,
       body: _pages[cindex],

@@ -9,7 +9,10 @@ import 'camera_page.dart';
 
 class NewDiary extends StatefulWidget{
   final XFile? imageFile;
-  const NewDiary({super.key, this.imageFile});
+  final TextEditingController? previousDiaryController;
+  final List<String>? previousImageUrls;
+  final String? diaryId;
+  const NewDiary({super.key, this.imageFile, this.previousDiaryController, this.previousImageUrls, this.diaryId});
 
   @override
   State<NewDiary> createState() => _NewDiaryState();
@@ -28,9 +31,10 @@ class _NewDiaryState extends State<NewDiary> {
   bool isLoading = false;
   List<String> imageUrls = [];
   List<File> pickedImages = [];
-  String _id = '';
+  String _id =  '';
   bool cam = false;
   bool created = false;
+  List<String> previousImageUrls = [];
   
 
 
@@ -44,6 +48,14 @@ class _NewDiaryState extends State<NewDiary> {
   @override
   void initState() {
     super.initState();
+    _id = widget.diaryId ?? '';
+    if (widget.previousDiaryController != null) {
+      _diaryController.text = widget.previousDiaryController!.text;
+      created = true;
+    }
+    if (widget.previousImageUrls != null) {
+      previousImageUrls = widget.previousImageUrls!;
+    }
     if (widget.imageFile != null) {
       setState(() {
         _images.add(File(widget.imageFile!.path));
@@ -52,7 +64,7 @@ class _NewDiaryState extends State<NewDiary> {
       createDiaryFromCam();
     }
     _diaryController.addListener(() async {
-    if (_images.isEmpty && _diaryController.text.isEmpty) {
+    if (_images.isEmpty && _diaryController.text.isEmpty && previousImageUrls.isEmpty) {
         await deleteDiary();
         return;
       }
@@ -175,7 +187,7 @@ class _NewDiaryState extends State<NewDiary> {
     try {
       await _firestoreService.updateDiaryEntryImageUrls(
         entryId: _id,
-        newImageUrls: imageUrls,
+        newImageUrls: [...previousImageUrls, ...imageUrls],
       );
       if (!mounted) return;
       setState(() {
@@ -251,7 +263,7 @@ class _NewDiaryState extends State<NewDiary> {
                 height: imagePickerHeight,
                 width: width * 0.80,
                 padding: EdgeInsets.only(left: 15,right: 10),
-                child: _images.isEmpty
+                child: _images.isEmpty && previousImageUrls.isEmpty
                     ? const Text(
                       "No images selected",
                       style: TextStyle(
@@ -259,54 +271,20 @@ class _NewDiaryState extends State<NewDiary> {
                         fontSize: 16,
                         color: Colors.black,
                       ),)
-                    : ListView.builder(
+                    :
+                    ListView.builder(
                         scrollDirection: Axis.horizontal,
-                        itemCount: _images.length,
+                        itemCount: _images.length + previousImageUrls.length,
                         itemBuilder: (context, index) {
-                          return Stack(
-                            children: [
-                              Container(
-                                margin: EdgeInsets.only(right: 8),
-                                width: 100,
-                                height: imagePickerHeight * 0.6,
-                                child: ClipRRect(
-                                  borderRadius: BorderRadius.circular(8),
-                                  child: Image.file(
-                                    _images[index],
-                                    fit: BoxFit.cover,
-                                  ),
-                                ),
-                              ),
-                              Positioned(
-                                top: 4,
-                                right: 100*0.1,
-                                child: GestureDetector(
-                                  onTap: isLoading ? null : () => removeImageAt(index),
-                                  child: Container(
-                                    height: 20,
-                                    width: 20,
-                                    decoration: BoxDecoration(
-                                      color: Colors.black54,
-                                      shape: BoxShape.circle,
-                                    ),
-                                    child: isLoading ?
-                                      CircularProgressIndicator(
-                                        strokeWidth: 1.5, 
-                                        color: Colors.white
-
-                                        )
-                                      : Icon( 
-                                        Icons.close,
-                                        size: 20,
-                                        color: Colors.white,
-                                      ),
-                                  ),
-                                ),
-                              )
-                            ],
-                          );
+                          width = 100;
+                          double height = imagePickerHeight * 0.6;
+                          if (index < previousImageUrls.length){
+                            return getImages(url: previousImageUrls[index], file: null, width: width, height: height, index: index, geImagestUrl: true);
+                          } else {
+                            return getImages(url: null, file: _images[index - previousImageUrls.length], width: width, height: height, index: index, geImagestUrl: false);
+                          }
                         },
-                      ),
+                      ),                  
               ),
               Container(
                 height: imagePickerHeight*0.7,
@@ -431,6 +409,49 @@ class _NewDiaryState extends State<NewDiary> {
           Navigator.pop(context);
         },
       ),
+    );
+  }
+
+  Stack getImages({required String? url, required File? file, required double width, required double height, required int index, required bool geImagestUrl}) {
+    return Stack(
+      children: [
+        Container(
+          margin: EdgeInsets.only(right: 8),
+          width: width,
+          height: height,
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child: 
+            geImagestUrl ? Image.network(url!,fit: BoxFit.cover,): Image.file(file!, fit:BoxFit.cover)
+          ),
+        ),
+        Positioned(
+          top: 4,
+          right: 100*0.1,
+          child: GestureDetector(
+            onTap: isLoading ? null : () => removeImageAt(index),
+            child: Container(
+              height: 20,
+              width: 20,
+              decoration: BoxDecoration(
+                color: Colors.black54,
+                shape: BoxShape.circle,
+              ),
+              child: isLoading ?
+                CircularProgressIndicator(
+                  strokeWidth: 1.5, 
+                  color: Colors.white
+
+                  )
+                : Icon( 
+                  Icons.close,
+                  size: 20,
+                  color: Colors.white,
+                ),
+            ),
+          ),
+        )
+      ],
     );
   }
 }

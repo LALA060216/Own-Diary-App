@@ -1,3 +1,4 @@
+import 'package:diaryapp/main.dart';
 import 'package:diaryapp/services/firestore_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -5,26 +6,60 @@ import 'package:flutter/rendering.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'newdiary_page.dart';
 
+bool createdNewDiaryToday = false;
+String streak = '';
 class Homepage extends StatefulWidget {
-  final bool createdNewDiaryToday;
-  const Homepage({super.key, required this.createdNewDiaryToday});
+  const Homepage({super.key});
   
 
   @override
   State<Homepage> createState() => _HomepageState();
 }
 
-class _HomepageState extends State<Homepage> {
+class _HomepageState extends State<Homepage> with RouteAware{
   FirebaseAuth firebaseAuth = FirebaseAuth.instance;
   FirestoreService firestoreService = FirestoreService();
   String userId = FirebaseAuth.instance.currentUser!.uid;
-  String streak = '';
-  bool createdNewDiaryToday = false;
+  TextEditingController _previousDiaryController = TextEditingController();
+  List<String> imageUrls = [];
+  String? diaryId = '';
 
   @override
   void initState() {
     super.initState();
+    _checkIfCreatedNewDiaryToday();
     _getStreak();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    routeObserver.subscribe(this, ModalRoute.of(context)! as PageRoute);
+  }
+
+  @override 
+  void didPopNext() {
+    _checkIfCreatedNewDiaryToday();
+    _getStreak();
+  }
+
+  @override
+  void dispose() {
+    routeObserver.unsubscribe(this);
+    super.dispose();
+  }
+
+  Future<void> _checkIfCreatedNewDiaryToday() async {
+    final newestDiary = await firestoreService.getNewestDiaryDetail(userId);
+    DateTime? newestDate = newestDiary?.created;
+    _previousDiaryController.text = newestDiary?.context ?? '';
+    imageUrls = newestDiary?.imageUrls ?? [];
+    diaryId = newestDiary?.id;
+
+    if (!mounted) return ;
+    setState(() {
+      createdNewDiaryToday = newestDate != null && DateUtils.isSameDay(newestDate, DateTime.now());
+    });
   }
 
   Future<void> _getStreak() async {
@@ -38,7 +73,7 @@ class _HomepageState extends State<Homepage> {
   @override
   Widget build(BuildContext context) {
     setState(() {
-      createdNewDiaryToday = widget.createdNewDiaryToday;
+      createdNewDiaryToday = createdNewDiaryToday;
     });
     return Scaffold(
       backgroundColor: Color(0xfff5f5f5),
@@ -357,7 +392,7 @@ class _HomepageState extends State<Homepage> {
           onPressed: () {
             Navigator.push(
               context,
-              MaterialPageRoute(builder: (context) => NewDiary()),
+              MaterialPageRoute(builder: (context) => NewDiary(previousDiaryController: _previousDiaryController, previousImageUrls: imageUrls, diaryId: diaryId)),
             );
           },
           style: ElevatedButton.styleFrom(
