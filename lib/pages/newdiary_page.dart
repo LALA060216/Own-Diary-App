@@ -198,16 +198,25 @@ class _NewDiaryState extends State<NewDiary> {
     }
   }
 
-  Future<void> removeImageAt(int index) async {
-    await _firebaseStorageService.deleteImage(imageUrls[index]);
+  Future<void> removeImageAt(int index, bool isPreviousImage) async {
+    await _firebaseStorageService.deleteImage(isPreviousImage ? previousImageUrls[index] : imageUrls[index]);
     if (mounted) {
       setState(() {
-        _images.removeAt(index);
+        if (isPreviousImage) {
+          previousImageUrls.removeAt(index);
+        } else {
+          _images.removeAt(index);
+          imageUrls.removeAt(index);
+        }
       });
     } else {
-      _images.removeAt(index);
+      if (isPreviousImage) {
+        previousImageUrls.removeAt(index);
+      } else {
+        _images.removeAt(index);
+        imageUrls.removeAt(index);
+      }
     }
-    imageUrls.removeAt(index);
     await updateImageUrls();
     if (_images.isEmpty && _diaryController.text.isEmpty) {
         await deleteDiary();
@@ -279,9 +288,9 @@ class _NewDiaryState extends State<NewDiary> {
                           width = 100;
                           double height = imagePickerHeight * 0.6;
                           if (index < previousImageUrls.length){
-                            return getImages(url: previousImageUrls[index], file: null, width: width, height: height, index: index, geImagestUrl: true);
+                            return getImages(url: previousImageUrls[index], file: null, width: width, height: height, index: index, getImagesUrl: true);
                           } else {
-                            return getImages(url: null, file: _images[index - previousImageUrls.length], width: width, height: height, index: index, geImagestUrl: false);
+                            return getImages(url: null, file: _images[index - previousImageUrls.length], width: width, height: height, index: index, getImagesUrl: false);
                           }
                         },
                       ),                  
@@ -412,7 +421,7 @@ class _NewDiaryState extends State<NewDiary> {
     );
   }
 
-  Stack getImages({required String? url, required File? file, required double width, required double height, required int index, required bool geImagestUrl}) {
+  Stack getImages({required String? url, required File? file, required double width, required double height, required int index, required bool getImagesUrl}) {
     return Stack(
       children: [
         Container(
@@ -422,14 +431,14 @@ class _NewDiaryState extends State<NewDiary> {
           child: ClipRRect(
             borderRadius: BorderRadius.circular(8),
             child: 
-            geImagestUrl ? Image.network(url!,fit: BoxFit.cover,): Image.file(file!, fit:BoxFit.cover)
+            getImagesUrl ? Image.network(url!,fit: BoxFit.cover,): Image.file(file!, fit:BoxFit.cover)
           ),
         ),
         Positioned(
           top: 4,
           right: 100*0.1,
           child: GestureDetector(
-            onTap: isLoading ? null : () => removeImageAt(index),
+            onTap: isLoading ? null : () => removeImageAt(index, getImagesUrl),
             child: Container(
               height: 20,
               width: 20,
