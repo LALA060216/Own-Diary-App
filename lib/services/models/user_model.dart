@@ -4,6 +4,7 @@ class UserModel {
   final String uid;
   final String email;
   final String username;
+  final String? photoUrl; 
   final DateTime createdAt;
   final int streak;
   final int totalDiaryPosted;
@@ -14,6 +15,7 @@ class UserModel {
     required this.email,
     required this.username,
     required this.createdAt,
+    this.photoUrl,
     this.streak = 0,
     this.totalDiaryPosted = 0,
     this.lastPostDate,
@@ -27,6 +29,7 @@ class UserModel {
       email: data['email'] ?? '',
       username: data['username'] ?? '',
       createdAt: (data['createdAt'] as Timestamp).toDate(),
+      photoUrl: data['photoUrl'],
       streak: data['streak'] ?? 0,
       totalDiaryPosted: data['totalDiaryPosted'] ?? 0,
       lastPostDate: data['lastPostDate'] != null
@@ -42,6 +45,7 @@ class UserModel {
       'email': email,
       'username': username,
       'createdAt': Timestamp.fromDate(createdAt),
+      'photoUrl': photoUrl,
       'streak': streak,
       'totalDiaryPosted': totalDiaryPosted,
       'lastPostDate': lastPostDate != null ? Timestamp.fromDate(lastPostDate!) : null,
@@ -53,6 +57,7 @@ class UserModel {
     String? email,
     String? username,
     DateTime? createdAt,
+    String? photoUrl,
     int? streak,
     int? totalDiaryPosted,
     DateTime? lastPostDate,
@@ -62,6 +67,7 @@ class UserModel {
       email: email ?? this.email,
       username: username ?? this.username,
       createdAt: createdAt ?? this.createdAt,
+      photoUrl: photoUrl ?? this.photoUrl,
       streak: streak ?? this.streak,
       totalDiaryPosted: totalDiaryPosted ?? this.totalDiaryPosted,
       lastPostDate: lastPostDate ?? this.lastPostDate,

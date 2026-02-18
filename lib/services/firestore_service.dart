@@ -1,3 +1,5 @@
+import 'dart:io';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:diaryapp/services/firebase_storage_service.dart';
 import 'package:flutter/material.dart';
@@ -301,6 +303,30 @@ class FirestoreService {
       rethrow;
     }
   }
+
+  //update profile photo url
+  // In FirestoreService:
+Future<void> updateProfilePhoto(String uid, File file) async {
+  final url = await _firebaseStorageService.uploadProfilePhoto(file, uid);
+  if (url != null) {
+    await usersCollection.doc(uid).update({'photoUrl': url});
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null && user.uid == uid) {
+      await user.updatePhotoURL(url);
+    }
+  }
+}
+
+Future<void> removeProfilePhoto(String uid) async {
+  await _firebaseStorageService.deleteProfilePhoto(uid);
+  await usersCollection.doc(uid).update({'photoUrl': FieldValue.delete()});
+  final user = FirebaseAuth.instance.currentUser;
+  if (user != null && user.uid == uid) {
+    await user.updatePhotoURL(null);
+  }
+}
+
+
 }
 
 
