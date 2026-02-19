@@ -1,14 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../services/models/diary_entry_model.dart';
+import 'full_screen_image_page.dart'; // import your full-screen page
 
 class DetailsDiary extends StatelessWidget {
   final DiaryEntryModel diary;
 
-  const DetailsDiary({
-    super.key,
-    required this.diary,
-  });
+  const DetailsDiary({super.key, required this.diary});
 
   @override
   Widget build(BuildContext context) {
@@ -23,19 +21,34 @@ class DetailsDiary extends StatelessWidget {
         final index = int.parse(match.group(1)!);
         // Add text before the placeholder
         spans.add(TextSpan(text: diary.context.substring(currentIndex, match.start)));
-        // Embed the image inline using WidgetSpan
+        // Embed the image inline using WidgetSpan with tap & hero
         if (index < diary.imageUrls.length) {
-          spans.add(WidgetSpan(
-            alignment: PlaceholderAlignment.bottom,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 8.0),
-              child: Image.network(
-                diary.imageUrls[index],
-                fit: BoxFit.cover,
-                width: MediaQuery.of(context).size.width,
+          spans.add(
+            WidgetSpan(
+              alignment: PlaceholderAlignment.bottom,
+              child: GestureDetector(
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => FullScreenImagePage(
+                        imageUrls: diary.imageUrls,
+                        initialIndex: index,
+                      ),
+                    ),
+                  );
+                },
+                child: Hero(
+                  tag: diary.imageUrls[index],
+                  child: Image.network(
+                    diary.imageUrls[index],
+                    fit: BoxFit.cover,
+                    width: MediaQuery.of(context).size.width,
+                  ),
+                ),
               ),
             ),
-          ));
+          );
         }
         currentIndex = match.end;
         return '';
@@ -48,7 +61,7 @@ class DetailsDiary extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Diary Details"),
+        title: const Text('Diary Details'),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
@@ -56,22 +69,48 @@ class DetailsDiary extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              DateFormat("dd MMM yyyy").format(diary.created),
+              DateFormat('dd MMM yyyy').format(diary.created),
               style: const TextStyle(fontSize: 16, color: Colors.grey),
             ),
             const SizedBox(height: 20),
-            // Show the first image at the top if available
+            // Show all images in a horizontal scroll view
             if (diary.imageUrls.isNotEmpty)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 16.0),
-                child: Image.network(
-                  diary.imageUrls[0],
-                  fit: BoxFit.cover,
-                  width: double.infinity,
-                  height: 200,
+              SizedBox(
+                height: 200,
+                child: ListView.builder(
+                  scrollDirection: Axis.horizontal,
+                  itemCount: diary.imageUrls.length,
+                  itemBuilder: (context, index) {
+                    final url = diary.imageUrls[index];
+                    return Padding(
+                      padding: const EdgeInsets.only(right: 8.0),
+                      child: GestureDetector(
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => FullScreenImagePage(
+                                imageUrls: diary.imageUrls,
+                                initialIndex: index,
+                              ),
+                            ),
+                          );
+                        },
+                        child: Hero(
+                          tag: url,
+                          child: Image.network(
+                            url,
+                            fit: BoxFit.cover,
+                            width: MediaQuery.of(context).size.width * 0.8,
+                          ),
+                        ),
+                      ),
+                    );
+                  },
                 ),
               ),
-            // Render combined text and images
+            const SizedBox(height: 16),
+            // Render combined text and images inline
             Text.rich(
               TextSpan(children: spans),
               style: const TextStyle(fontSize: 18),
