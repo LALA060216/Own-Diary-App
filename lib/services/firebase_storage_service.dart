@@ -32,5 +32,28 @@ class FirebaseStorageService {
     }
   }
 
+  Future<String?> uploadProfilePhoto(File file, String userId) async {
+    try {
+      final ref = _storage
+          .ref()
+          .child('profilePhotos')
+          .child(userId)
+          .child('avatar.jpg');
+      await ref.putFile(file);
+      return await ref.getDownloadURL();
+    } catch (e) {
+      return null;
+    }
+  }
+
+  Future<void> deleteProfilePhoto(String userId) async {
+    final ref = _storage
+        .ref()
+        .child('profilePhotos')
+        .child(userId)
+        .child('avatar.jpg');
+    await ref.delete();
+  }
+
 }
 

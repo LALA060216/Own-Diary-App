@@ -5,6 +5,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:diaryapp/services/firebase_storage_service.dart';
 import 'camera_page.dart';
+import 'full_screen_image_page.dart';
 // 魔丸
 
 class NewDiary extends StatefulWidget{
@@ -57,10 +58,8 @@ class _NewDiaryState extends State<NewDiary> {
       previousImageUrls = widget.previousImageUrls!;
     }
     if (widget.imageFile != null) {
-      setState(() {
         _images.add(File(widget.imageFile!.path));
         pickedImages.add(File(widget.imageFile!.path));
-      });
       createDiaryFromCam();
     }
     _diaryController.addListener(() async {
@@ -134,9 +133,7 @@ class _NewDiaryState extends State<NewDiary> {
 
   Future<void> pickImages() async {
     final List<XFile> pickedFiles = await _picker.pickMultiImage();
-    if (pickedFiles.isEmpty) {
-      return;
-    }
+    if (pickedFiles.isEmpty) return;
     if (!mounted) return;
     setState(() {
       _images.addAll(pickedFiles.map((file) => File(file.path)));
@@ -169,14 +166,10 @@ class _NewDiaryState extends State<NewDiary> {
         isLoading = true;
       });
     }
-    for (int i = 0; i < pickedImages.length; i++) {
-      String? url = await _firebaseStorageService.uploadImage(pickedImages[i], _userId, _id);
+    for (final file in pickedImages) {
+      final url = await _firebaseStorageService.uploadImage(file, _userId, _id);
       if (url != null) {
         imageUrls.add(url);
-      }
-      else {
-        error = true;
-        break;
       }
     }
     pickedImages.clear();
@@ -263,76 +256,104 @@ class _NewDiaryState extends State<NewDiary> {
   }
 
   Container imagePicker(double width, double imagePickerHeight) {
+    final List<String> allPaths = [
+      ...previousImageUrls,
+      ..._images.map((file) => file.path),
+    ];
     return Container(
       child: Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Container(
-                height: imagePickerHeight,
-                width: width * 0.80,
-                padding: EdgeInsets.only(left: 15,right: 10),
-                child: _images.isEmpty && previousImageUrls.isEmpty
-                    ? const Text(
-                      "No images selected",
-                      style: TextStyle(
-                        fontFamily: 'lobstertwo',
-                        fontSize: 16,
-                        color: Colors.black,
-                      ),)
-                    :
-                    ListView.builder(
-                        scrollDirection: Axis.horizontal,
-                        itemCount: _images.length + previousImageUrls.length,
-                        itemBuilder: (context, index) {
-                          width = 100;
-                          double height = imagePickerHeight * 0.6;
-                          if (index < previousImageUrls.length){
-                            return getImages(url: previousImageUrls[index], file: null, width: width, height: height, index: index, getImagesUrl: true);
-                          } else {
-                            return getImages(url: null, file: _images[index - previousImageUrls.length], width: width, height: height, index: index, getImagesUrl: false);
-                          }
+        crossAxisAlignment: CrossAxisAlignment.center,
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            height: imagePickerHeight,
+            width: width * 0.80,
+            padding: EdgeInsets.only(left: 15,right: 10),
+            child: _images.isEmpty && previousImageUrls.isEmpty
+                ? const Text(
+                  "No images selected",
+                  style: TextStyle(
+                    fontFamily: 'lobstertwo',
+                    fontSize: 16,
+                    color: Colors.black,
+                  ),)
+                :
+                ListView.builder(
+                  scrollDirection: Axis.horizontal,
+                  itemCount: allPaths.length,
+                  itemBuilder: (context, index) {
+                    final bool isUrl = index < previousImageUrls.length;
+                    final String tag = allPaths[index];
+                    final double itemWidth = 100;
+                    final double itemHeight = imagePickerHeight * 0.6;
+                    return Padding(
+                      padding: const EdgeInsets.only(right: 8.0),
+                      child: GestureDetector(
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => FullScreenImagePage(
+                                imageUrls: allPaths,
+                                initialIndex: index,
+                              ),
+                            ),
+                          );
                         },
-                      ),                  
-              ),
-              Container(
-                height: imagePickerHeight*0.7,
-                width: width * 0.20,
-                decoration: BoxDecoration(
-                  color: Color(0xffF9F6EE),
-                  borderRadius: BorderRadius.circular(8),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Color(0xffEDEADE),
-                      spreadRadius: 2,
-                      blurRadius: 4,
-                      offset: Offset(0, 1),
-                    ),
-                  ],
-                ),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                  children: [
-                    GestureDetector(
-                      onTap: pickImages,
-                      child: Icon(Icons.add),
-                    ),
-                    Divider(
-                      thickness: 2,
-                      height: 1,
-                      color: Color(0xffEDEADE),
-                    ),
-                    GestureDetector(
-                      onTap: () async {
-                        await openCameraPageAndUpload();
-                      },
-                      child: Icon(Icons.camera_alt, size: 30, color: Colors.black54),
-                    )
-                  ],
-                ),
-              ),
-            ],
+                        child: Hero(
+                          tag: tag,
+                          child: getImages(
+                            url: isUrl ? previousImageUrls[index] : null,
+                            file: isUrl ? null : _images[index - previousImageUrls.length],
+                            width: itemWidth,
+                            height: itemHeight,
+                            index: index,
+                            getImagesUrl: isUrl,
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                ),                  
           ),
+          Container(
+            height: imagePickerHeight*0.7,
+            width: width * 0.20,
+            decoration: BoxDecoration(
+              color: Color(0xffF9F6EE),
+              borderRadius: BorderRadius.circular(8),
+              boxShadow: [
+                BoxShadow(
+                  color: Color(0xffEDEADE),
+                  spreadRadius: 2,
+                  blurRadius: 4,
+                  offset: Offset(0, 1),
+                ),
+              ],
+            ),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                GestureDetector(
+                  onTap: pickImages,
+                  child: Icon(Icons.add),
+                ),
+                Divider(
+                  thickness: 2,
+                  height: 1,
+                  color: Color(0xffEDEADE),
+                ),
+                GestureDetector(
+                  onTap: () async {
+                    await openCameraPageAndUpload();
+                  },
+                  child: Icon(Icons.camera_alt, size: 30, color: Colors.black54),
+                )
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -341,11 +362,11 @@ class _NewDiaryState extends State<NewDiary> {
       width: width,
       height: containerHeight,
       decoration: BoxDecoration(
-        color: Color(0xffF9F6EE),
+        color: const Color(0xffF9F6EE),
         borderRadius: BorderRadius.circular(10),
         boxShadow: [
           BoxShadow(
-            color: Color(0xffEDEADE),
+            color: const Color(0xffEDEADE),
             spreadRadius: 2,
             blurRadius: 4,
             offset: Offset(0, 1),
@@ -401,9 +422,9 @@ class _NewDiaryState extends State<NewDiary> {
   AppBar appbar(BuildContext context) {
     return AppBar(
       automaticallyImplyLeading: false,
-      shadowColor: Color(0xffEDEADE),
+      shadowColor: const Color(0xffEDEADE),
       elevation: 2,
-      backgroundColor: Color(0xfffffaf0),
+      backgroundColor: const Color(0xfffffaf0),
       centerTitle: true,
       title: Text(
         'New Diary', 
@@ -421,7 +442,14 @@ class _NewDiaryState extends State<NewDiary> {
     );
   }
 
-  Stack getImages({required String? url, required File? file, required double width, required double height, required int index, required bool getImagesUrl}) {
+  Stack getImages({
+    required String? url, 
+    required File? file, 
+    required double width, 
+    required double height, 
+    required int index, 
+    required bool getImagesUrl
+  }) {
     return Stack(
       children: [
         Container(
@@ -436,23 +464,23 @@ class _NewDiaryState extends State<NewDiary> {
         ),
         Positioned(
           top: 4,
-          right: 100*0.1,
+          right: width * 0.1,
           child: GestureDetector(
             onTap: isLoading ? null : () => removeImageAt(index, getImagesUrl),
             child: Container(
               height: 20,
               width: 20,
-              decoration: BoxDecoration(
+              decoration: const BoxDecoration(
                 color: Colors.black54,
                 shape: BoxShape.circle,
               ),
               child: isLoading ?
-                CircularProgressIndicator(
+                const CircularProgressIndicator(
                   strokeWidth: 1.5, 
                   color: Colors.white
+                )
 
-                  )
-                : Icon( 
+                : const Icon( 
                   Icons.close,
                   size: 20,
                   color: Colors.white,

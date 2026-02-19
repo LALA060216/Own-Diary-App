@@ -83,7 +83,7 @@ Future<bool?> showDeleteConfirmationDialog(BuildContext context) {
               'Delete diary?',
               style: TextStyle(
                 fontSize: 18,
-                fontWeight: FontWeight.bold,
+                fontWeight: FontWeight.normal,
               ),
             ),
             const SizedBox(height: 12),
@@ -152,7 +152,11 @@ Future<bool?> showDeleteConfirmationDialog(BuildContext context) {
                             child: const Center(
                               child: Text(
                                 'Delete',
-                                style: TextStyle(color: Colors.red, fontSize: 16),
+                                style: TextStyle(
+                                  color: Colors.red, 
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.normal
+                                ),
                               ),
                             ),
                           ),
