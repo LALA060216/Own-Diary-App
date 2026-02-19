@@ -8,6 +8,7 @@ class UserModel {
   final int streak;
   final int totalDiaryPosted;
   final DateTime? lastPostDate;
+  final DateTime? lastStreakUpdateDate;
 
   UserModel({
     required this.uid,
@@ -17,6 +18,7 @@ class UserModel {
     this.streak = 0,
     this.totalDiaryPosted = 0,
     this.lastPostDate,
+    this.lastStreakUpdateDate,
   });
 
   // Firestore data -> UserModel
@@ -32,6 +34,9 @@ class UserModel {
       lastPostDate: data['lastPostDate'] != null
           ? (data['lastPostDate'] as Timestamp).toDate()
           : null,
+      lastStreakUpdateDate: data['lastStreakUpdateDate'] != null
+          ? (data['lastStreakUpdateDate'] as Timestamp).toDate()
+          : null,
     );
   }
 
@@ -45,6 +50,7 @@ class UserModel {
       'streak': streak,
       'totalDiaryPosted': totalDiaryPosted,
       'lastPostDate': lastPostDate != null ? Timestamp.fromDate(lastPostDate!) : null,
+      'lastStreakUpdateDate': lastStreakUpdateDate != null ? Timestamp.fromDate(lastStreakUpdateDate!) : null,
     };
   }
 
@@ -56,6 +62,7 @@ class UserModel {
     int? streak,
     int? totalDiaryPosted,
     DateTime? lastPostDate,
+    DateTime? lastStreakUpdateDate,
   }) {
     return UserModel(
       uid: uid ?? this.uid,
@@ -65,6 +72,7 @@ class UserModel {
       streak: streak ?? this.streak,
       totalDiaryPosted: totalDiaryPosted ?? this.totalDiaryPosted,
       lastPostDate: lastPostDate ?? this.lastPostDate,
+      lastStreakUpdateDate: lastStreakUpdateDate ?? this.lastStreakUpdateDate,
     );
   }
 }

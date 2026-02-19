@@ -20,7 +20,7 @@ class _Bottommenustate extends State<BottomMenu>{
   List<Widget> get _pages => [
     Homepage(),
     Diaries(),
-    AiSummary(),
+    AISummaryPage(),
     ProfilePage()
   ];
   final FirestoreService firestoreService = FirestoreService();

@@ -88,14 +88,14 @@ class FirestoreService {
   }) async {
     try {
       final userData = await getUserData(uid);
-      if (userData?.lastPostDate == null){
-        await incrementUserStreak(uid);
-      } else {
+      if (userData?.lastPostDate != null){
         final lastPostDate = userData!.lastPostDate;
         bool isSameDay = lastPostDate != null && DateUtils.isSameDay(date, lastPostDate);
-          if (!isSameDay) {
+        if (!isSameDay) {
           final differenceInDays = date.difference(lastPostDate!).inDays;
-          if (differenceInDays == 1) {
+          print('Difference in days: $differenceInDays');
+          if (differenceInDays <= 1 && (userData.lastStreakUpdateDate == null || !DateUtils.isSameDay(date, userData.lastStreakUpdateDate!))) {
+            await updateLastStreakUpdateDate(uid, date);
             await incrementUserStreak(uid);
           } 
           else if (differenceInDays > 1) {
@@ -175,6 +175,16 @@ class FirestoreService {
     try {
       await usersCollection.doc(uid).update({
         'lastPostDate': Timestamp.fromDate(date),
+      });
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  Future<void> updateLastStreakUpdateDate(String uid, DateTime date) async {
+    try {
+      await usersCollection.doc(uid).update({
+        'lastStreakUpdateDate': Timestamp.fromDate(date),
       });
     } catch (e) {
       rethrow;
