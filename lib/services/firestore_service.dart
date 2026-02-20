@@ -83,33 +83,6 @@ class FirestoreService {
     }
   }
 
-  /// Update user streak and total diary posted
-  Future<void> updateStreak({
-    required String uid,
-    required DateTime date,
-  }) async {
-    try {
-      final userData = await getUserData(uid);
-      if (userData?.lastPostDate != null){
-        final lastPostDate = userData!.lastPostDate;
-        bool isSameDay = lastPostDate != null && DateUtils.isSameDay(date, lastPostDate);
-        if (!isSameDay) {
-          final differenceInDays = date.difference(lastPostDate!).inDays;
-          print('Difference in days: $differenceInDays');
-          if (differenceInDays <= 1 && (userData.lastStreakUpdateDate == null || !DateUtils.isSameDay(date, userData.lastStreakUpdateDate!))) {
-            await updateLastStreakUpdateDate(uid, date);
-            await incrementUserStreak(uid);
-          } 
-          else if (differenceInDays > 1) {
-            await resetUserStreak(uid);
-          }
-        }
-      }
-    } catch (e) {
-      rethrow;
-    }
-  }
-
   /// Increment total diary posted count (call when user creates a new diary entry)
   Future<void> incrementDiaryPostCount(String uid) async {
     try {
@@ -136,6 +109,24 @@ class FirestoreService {
     try{
       final userData = await getUserData(uid);
       return userData?.streak ?? 0;
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  Future<DateTime?> getUserLastPostDate(String uid) async {
+    try {
+      final userData = await getUserData(uid);
+      return userData?.lastPostDate;
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  Future<DateTime?> getUserLastStreakUpdateDate(String uid) async {
+    try {
+      final userData = await getUserData(uid);
+      return userData?.lastStreakUpdateDate;
     } catch (e) {
       rethrow;
     }
@@ -193,6 +184,32 @@ class FirestoreService {
     }
   }
 
+  Future<void> updateStreak(String uid, DateTime date) async {
+    try {
+      final userLastPostDate = await getUserLastPostDate(uid);
+      final userLastStreakUpdateDate = await getUserLastStreakUpdateDate(uid);
+
+      if (userLastPostDate != null) {
+        if (userLastStreakUpdateDate == null){
+          await incrementUserStreak(uid);
+          await updateLastStreakUpdateDate(uid, date);
+        } else {
+          int differenceInDays = userLastStreakUpdateDate.difference(userLastPostDate).inDays;
+          if (differenceInDays == 1) {
+            // User posted yesterday, increment streak
+            await incrementUserStreak(uid);
+            await updateLastStreakUpdateDate(uid, date);
+
+          } else if (differenceInDays > 1) {
+            // User missed more than one day, reset streak
+            await resetUserStreak(uid);
+          }
+        }
+      }
+    } catch (e) {
+      rethrow;
+    }
+  }
 
   // ==================== DIARY ENTRIES OPERATIONS ====================
 

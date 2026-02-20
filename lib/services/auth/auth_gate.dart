@@ -17,15 +17,7 @@ class AuthGate extends StatelessWidget {
           stream: authService.authStateChanges,
           builder: (context, snapshot) {
             final user = snapshot.data;
-
             if (user != null) {
-              // Schedule the side effect to run after build completes.
-              Future.microtask(() {
-                authService.firestoreService.updateStreak(
-                  uid: user.uid,
-                  date: DateTime.now(),
-                );
-              });
               return const BottomMenu();
             } else {
               return pageIfNotConnected ?? const WelcomePage();

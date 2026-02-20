@@ -17,9 +17,9 @@ class Homepage extends StatefulWidget {
 }
 
 class _HomepageState extends State<Homepage> with RouteAware{
-  FirebaseAuth firebaseAuth = FirebaseAuth.instance;
   FirestoreService firestoreService = FirestoreService();
   String userId = FirebaseAuth.instance.currentUser!.uid;
+  Future<DateTime?> _lastStreakUpdateDate = Future.value(null);
   TextEditingController _previousDiaryController = TextEditingController();
   List<String> imageUrls = [];
   String? diaryId = '';
@@ -63,7 +63,7 @@ class _HomepageState extends State<Homepage> with RouteAware{
   }
 
   Future<void> _getStreak() async {
-    final value  = await firestoreService.getUserStreak(userId);
+    final value = await firestoreService.getUserStreak(userId);
     if (!mounted) return;
     setState(() {
       streak = value.toString();

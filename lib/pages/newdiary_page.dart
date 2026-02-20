@@ -101,7 +101,6 @@ class _NewDiaryState extends State<NewDiary> {
 
   Future<void> createNewDiary() async {
     try {
-      _firestoreService.updateStreak(uid: _userId, date: date);
       _firestoreService.incrementDiaryPostCount(_userId);
       _id = await _firestoreService.createDiaryEntry(
         userId: _userId,
@@ -109,6 +108,7 @@ class _NewDiaryState extends State<NewDiary> {
         imageUrls: [],
         date: date,
       );
+      await _firestoreService.updateStreak(_userId, DateTime.now());
     } catch (e) {
       error = true;
     }
