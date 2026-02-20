@@ -195,7 +195,7 @@ class FirestoreService {
           await updateLastStreakUpdateDate(uid, date);
         } else {
           int differenceInDays = userLastStreakUpdateDate.difference(userLastPostDate).inDays;
-          if (differenceInDays <= 1 && DateUtils.isSameDay(userLastStreakUpdateDate, date) == false) {
+          if (DateUtils.isSameDay(userLastStreakUpdateDate, date) == false) {
             // User posted yesterday, increment streak
             await incrementUserStreak(uid);
             await updateLastStreakUpdateDate(uid, date);
