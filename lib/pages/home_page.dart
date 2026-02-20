@@ -19,7 +19,6 @@ class Homepage extends StatefulWidget {
 class _HomepageState extends State<Homepage> with RouteAware{
   FirestoreService firestoreService = FirestoreService();
   String userId = FirebaseAuth.instance.currentUser!.uid;
-  Future<DateTime?> _lastStreakUpdateDate = Future.value(null);
   TextEditingController _previousDiaryController = TextEditingController();
   List<String> imageUrls = [];
   String? diaryId = '';
