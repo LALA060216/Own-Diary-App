@@ -1,5 +1,3 @@
-import 'dart:convert';
-
 import 'package:diaryapp/main.dart';
 import 'package:diaryapp/services/firestore_service.dart';
 import 'package:diaryapp/services/gemini_service.dart';

@@ -3,13 +3,7 @@ import 'dart:async';
 import 'package:diaryapp/services/firestore_service.dart';
 import 'package:diaryapp/services/gemini_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-﻿
 import 'dart:io';
-import 'dart:convert';
-import 'dart:async';
-import 'package:diaryapp/services/firestore_service.dart';
-import 'package:diaryapp/services/gemini_service.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:diaryapp/services/firebase_storage_service.dart';
