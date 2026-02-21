@@ -9,7 +9,11 @@ class GeminiService {
     : _chatModel = chatModel {
     _model = GenerativeModel(
       model: _chatModel.model,
-      apiKey: 'AIzaSyCcLIyQT03Skh9Cr4l-b7acBDF8pfjgwiw'
+      apiKey: 'AIzaSyCcLIyQT03Skh9Cr4l-b7acBDF8pfjgwiw',
+      generationConfig: GenerationConfig(
+        temperature: 0.6,
+        topP: 0.9,
+      ),
     );
   }
 
@@ -39,6 +43,22 @@ class GeminiService {
 
       final response = await chat.sendMessage(Content.text(userMessage));
       return response.text ?? "Sorry, I couldn't generate a response.";
+    } catch (e) {
+      return "Error: $e";
+    }
+  }
+
+  Future<String> getMoodAnalysis(String diaryEntry) async {
+    try{
+      final trimmedEntry = diaryEntry.trim();
+      if (trimmedEntry.isEmpty) {
+        return "Error: Empty diary entry";
+      }
+
+      final response = await _model.generateContent([
+        Content.text('${_chatModel.prompt}\nDiary entry:\n$trimmedEntry'),
+      ]);
+      return response.text ?? "";
     } catch (e) {
       return "Error: $e";
     }

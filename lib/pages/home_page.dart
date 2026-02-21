@@ -1,6 +1,11 @@
+import 'dart:convert';
+
 import 'package:diaryapp/main.dart';
 import 'package:diaryapp/services/firestore_service.dart';
+import 'package:diaryapp/services/gemini_service.dart';
+import 'package:diaryapp/services/models/ai_chat_model.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
@@ -8,8 +13,9 @@ import 'newdiary_page.dart';
 
 bool createdNewDiaryToday = false;
 String streak = '';
-int indexForHealth = 0;
-int indexForMood = 0;
+List<int> status = [0,0];
+String oldDiaryContext = '';
+bool updatedDiary = true;
 
 class Homepage extends StatefulWidget {
   const Homepage({super.key});
@@ -25,11 +31,116 @@ class _HomepageState extends State<Homepage> with RouteAware{
   TextEditingController _previousDiaryController = TextEditingController();
   List<String> imageUrls = [];
   String? diaryId = '';
+  bool isLoading = false;
+  String prompt = 'You are a sentiment analyzer. Analyze the diary entry and select the best matching index (0-19) from the two lists below.\n'+
+  'Health Statuses (0-19):\n'+
+  '["Healthy", "Infected", "Feverish", "Chills", "Painful", "Fatigued", "Dizzy", "Depressed", "Nauseous", "Active", "Bedridden", "Energetic", "Weak", "Immobile", "Pregnant", "Frail", "Hospitalized", "Hygienic", "Overweight", "Critical"]\n'+
+  'Emotion Statuses (0-19):\n'+
+  '["Happy", "Overjoyed", "Loved", "Neutral", "Sad", "Depressed", "Angry", "Furious", "Annoyed", "Exhausted", "Embarrassed", "Shocked", "Awkward", "Confused", "Scared", "Stressed", "Heartbroken", "Gloomy", "Chill", "Terrible"]\n'+
+  'Return ONLY two numbers separated by a space.\n'+
+  '!!Important!! Follow these two Rules: '+
+  '1) If the diary entry describes emotions but DOES NOT mention physical symptoms or health, default the health_index to 0'+
+  '2) Do not include any other text, explanations, or formatting. Just the two numbers. Example: 5 10. Bad response: 08 06';
+  late AIChatModel _chatModel = AIChatModel(prompt: prompt, model: 'gemma-3-27b-it');
+
+  List<dynamic> healthIcons = [
+    FontAwesomeIcons.heartPulse,
+    FontAwesomeIcons.virus,
+    FontAwesomeIcons.temperatureHigh,
+    FontAwesomeIcons.faceGrimace,
+    FontAwesomeIcons.faceTired,
+    FontAwesomeIcons.faceDizzy,
+    FontAwesomeIcons.faceSadTear,
+    FontAwesomeIcons.faceRollingEyes,
+    FontAwesomeIcons.personRunning,
+    FontAwesomeIcons.bed,
+    FontAwesomeIcons.batteryFull,
+    FontAwesomeIcons.batteryQuarter,
+    FontAwesomeIcons.wheelchair,
+    FontAwesomeIcons.personPregnant,
+    FontAwesomeIcons.personCane,
+    FontAwesomeIcons.hospital,
+    FontAwesomeIcons.handsBubbles,
+    FontAwesomeIcons.weightScale,
+    FontAwesomeIcons.skull
+  ];
+  List<String> healthStatuses = [
+    "Healthy",
+    "Infected",
+    "Feverish",
+    "Chills",
+    "Painful",
+    "Fatigued",
+    "Dizzy",
+    "Depressed",
+    "Nauseous",
+    "Active",
+    "Bedridden",
+    "Energetic",
+    "Weak",
+    "Immobile",
+    "Pregnant",
+    "Frail",
+    "Hospitalized",
+    "Hygienic",
+    "Overweight",
+    "Critical",
+  ];
+
+  List<dynamic> emotionIcons = [
+    FontAwesomeIcons.faceSmile,      
+    FontAwesomeIcons.faceLaughBeam,   
+    FontAwesomeIcons.faceGrinHearts,  
+    FontAwesomeIcons.faceMeh,         
+    FontAwesomeIcons.faceFrown,       
+    FontAwesomeIcons.faceSadTear,     
+    FontAwesomeIcons.faceAngry,       
+    FontAwesomeIcons.fire,            
+    FontAwesomeIcons.faceRollingEyes, 
+    FontAwesomeIcons.faceTired,       
+    FontAwesomeIcons.faceFlushed,     
+    FontAwesomeIcons.faceSurprise,    
+    FontAwesomeIcons.faceGrimace,     
+    FontAwesomeIcons.faceDizzy,       
+    FontAwesomeIcons.ghost,           
+    FontAwesomeIcons.bolt,            
+    FontAwesomeIcons.heartCrack,      
+    FontAwesomeIcons.cloudRain,       
+    FontAwesomeIcons.peace,           
+    FontAwesomeIcons.poo,             
+  ];
+  List<String> emotionStatus = [
+    "Happy",
+    "Overjoyed",
+    "Loved",
+    "Neutral",
+    "Sad",
+    "Depressed",
+    "Angry",
+    "Furious",
+    "Annoyed",
+    "Exhausted",
+    "Embarrassed",
+    "Shocked",
+    "Awkward",
+    "Confused",
+    "Scared",
+    "Stressed",
+    "Heartbroken",
+    "Gloomy",
+    "Chill",
+    "Terrible",
+  ];
 
   @override
   void initState() {
     super.initState();
     _checkIfCreatedNewDiaryToday();
+    _didUpdatedDiary().then((updated) {
+      if (updated) {
+        _refreshMood();
+      }
+    });
     _getStreak();
   }
 
@@ -42,6 +153,11 @@ class _HomepageState extends State<Homepage> with RouteAware{
   @override 
   void didPopNext() {
     _checkIfCreatedNewDiaryToday();
+    _didUpdatedDiary().then((updated) {
+      if (updated) {
+        _refreshMood();
+      }
+    });
     _getStreak();
   }
 
@@ -57,7 +173,6 @@ class _HomepageState extends State<Homepage> with RouteAware{
     _previousDiaryController.text = newestDiary?.context ?? '';
     imageUrls = newestDiary?.imageUrls ?? [];
     diaryId = newestDiary?.id;
-
     if (!mounted) return ;
     setState(() {
       createdNewDiaryToday = newestDate != null && DateUtils.isSameDay(newestDate, DateTime.now());
@@ -71,6 +186,47 @@ class _HomepageState extends State<Homepage> with RouteAware{
       streak = value.toString();
     });
   }
+
+  Future<bool> _didUpdatedDiary() async {
+    final newestDiary = await firestoreService.getNewestDiaryDetail(userId);
+    String newestContext = newestDiary?.context ?? '';
+    List<String> newestImageUrls = newestDiary?.imageUrls != null ? List<String>.from(newestDiary!.imageUrls) : [];
+    if (newestContext != oldDiaryContext || !listEquals(newestImageUrls, imageUrls)) {
+      oldDiaryContext = newestContext;
+      imageUrls = newestImageUrls;
+      return true;
+    }
+    return false;
+  }
+
+  Future<void> _refreshMood() async {
+    isLoading = true;
+    
+    final newestDiary = await firestoreService.getNewestDiaryDetail(userId);
+    String context = newestDiary?.context ?? '';
+    await GeminiService(chatModel: _chatModel).getMoodAnalysis(context).then((value) {
+      try {
+        print(value);
+        final numbers = RegExp(r'\d+').allMatches(value)
+            .map((m) => int.parse(m.group(0)!))
+            .toList();
+        
+        if (numbers.length >= 2) {
+          setState(() {
+            isLoading = false;
+            status = [numbers[0], numbers[1]];
+          });
+        }
+      } catch (e) {
+        print("Error decoding mood analysis: $e");
+        print("Response was: $value");
+        setState(() {
+          status = [0, 0];
+        });
+      }
+    });
+  }
+
 
   @override
   Widget build(BuildContext context) {
@@ -101,7 +257,7 @@ class _HomepageState extends State<Homepage> with RouteAware{
               Spacer(),
               Padding(
                 padding: const EdgeInsets.only(right: 20.0, top: 40),
-                child: streakContainer(90, streak != '' ? int.parse(streak) : 0),
+                child: streakContainer(streak != '' ? int.parse(streak) : 0),
               ),
               SizedBox(
                 width: 1,
@@ -156,14 +312,13 @@ class _HomepageState extends State<Homepage> with RouteAware{
     );
   }
 
-  Container streakContainer(double width, int streak) {
+  Container streakContainer(int streak) {
     return Container(
       decoration: BoxDecoration(
         border: Border.all(color: const Color.fromARGB(255, 250, 160, 160), width: 3),
         borderRadius: BorderRadius.circular(10)
       ),
       padding: EdgeInsets.all(8),
-      width: width,
       height: 60,
       child:Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -227,12 +382,12 @@ class _HomepageState extends State<Homepage> with RouteAware{
                         ),
                         elevation: 0,
                       ), 
-                      child: Column(
+                      child: isLoading ? CircularProgressIndicator(color: Colors.white) : Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(FontAwesomeIcons.heartPulse, color: const Color.fromARGB(255, 255, 255, 255), size: maxWidth * 0.15), 
+                          FaIcon(healthIcons[status[0]], color: const Color.fromARGB(255, 255, 255, 255), size: maxWidth * 0.15), 
                           Padding(padding:  EdgeInsets.only(bottom: maxWidth * 0.02)), 
-                          Text('Good', style: TextStyle(fontSize: maxWidth * 0.1, color: const Color.fromARGB(255, 255, 255, 255), fontWeight: FontWeight.bold)),
+                          Text(healthStatuses[status[0]], style: TextStyle(fontSize: maxWidth * 0.06, color: const Color.fromARGB(255, 255, 255, 255), fontWeight: FontWeight.bold)),
                         ],
                       )
                     ),
@@ -281,12 +436,12 @@ class _HomepageState extends State<Homepage> with RouteAware{
                         shadowColor: Colors.transparent,
                         backgroundColor: Colors.transparent,
                       ), 
-                      child: Column(
+                      child: isLoading ? CircularProgressIndicator(color: Colors.white) :Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(FontAwesomeIcons.sadTear, color: const Color.fromARGB(255, 255, 255, 255), size: maxWidth * 0.15), 
+                          FaIcon(emotionIcons[status[1]], color: const Color.fromARGB(255, 255, 255, 255), size: maxWidth * 0.15), 
                           Padding(padding:  EdgeInsets.only(bottom: maxWidth * 0.02)), 
-                          Text('Sad', style: TextStyle(fontSize: maxWidth * 0.1, color: const Color.fromARGB(255, 255, 255, 255), fontWeight: FontWeight.bold)),
+                          Text(emotionStatus[status[1]], style: TextStyle(fontSize: maxWidth * 0.06, color: const Color.fromARGB(255, 255, 255, 255), fontWeight: FontWeight.bold)),
                         ],
                       )
                     ),
