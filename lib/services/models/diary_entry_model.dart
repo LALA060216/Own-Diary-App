@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 class DiaryEntryModel {
   final String id; 
   final String userId;
+  final String title;
   final String context;
   final List<String> imageUrls;
   final DateTime created;
@@ -12,6 +13,7 @@ class DiaryEntryModel {
   DiaryEntryModel({
     required this.id,
     required this.userId,
+    required this.title,
     required this.context,
     required this.imageUrls,
     required this.created,
@@ -25,6 +27,7 @@ class DiaryEntryModel {
     return DiaryEntryModel(
       id: doc.id,
       userId: data['userId'] ?? '',
+      title: data['title'] ?? '',
       context: data['context'] ?? '',
       imageUrls: List<String>.from(data['imageUrls'] ?? []),
       keywords: List<String>.from(data['keywords'] ?? []),
@@ -37,6 +40,7 @@ class DiaryEntryModel {
   Map<String, dynamic> toFireStore() {
     return {
       'userId': userId,
+      'title': title,
       'context': context,
       'imageUrls': imageUrls,
       'created': Timestamp.fromDate(created),
@@ -48,6 +52,7 @@ class DiaryEntryModel {
   DiaryEntryModel copyWith({
     String? id,
     String? userId,
+    String? title,
     String? context,
     List<String>? imageUrls,
     DateTime? created,
@@ -57,6 +62,7 @@ class DiaryEntryModel {
     return DiaryEntryModel(
       id: id ?? this.id,
       userId: userId ?? this.userId,
+      title: title ?? this.title,
       context: context ?? this.context,
       imageUrls: imageUrls ?? this.imageUrls,
       keywords: keywords ?? this.keywords,

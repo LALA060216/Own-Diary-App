@@ -1,13 +1,12 @@
 import 'dart:async';
-import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
-import 'package:image_picker/image_picker.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 import '../services/firestore_service.dart';
 import '../services/models/user_model.dart';
+import 'profile_photo/profile_photo_picker_page.dart';
 import 'setting_page.dart';
 
 class ProfilePage extends StatefulWidget {
@@ -63,22 +62,44 @@ class _ProfilePageState extends State<ProfilePage> {
               fontSize: 20,
             ),
           ),
-          message: const Text('Choose an option:'),
+          message: Column(
+            children: [
+              Container(
+                width: 120,
+                height: 120,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: const Color(0xfff5fffa),
+                  border: Border.all(color: const Color(0xffddd6e1), width: 2),
+                ),
+                child: ClipOval(
+                  child: currentUserModel?.photoUrl != null
+                      ? Image.network(
+                          currentUserModel!.photoUrl!,
+                          fit: BoxFit.cover,
+                        )
+                      : const Icon(Icons.person, size: 56),
+                ),
+              ),
+              const SizedBox(height: 12),
+              const Text('Choose an option:'),
+            ],
+          ),
           actions: [
             CupertinoActionSheetAction(
               onPressed: () async {
                 Navigator.pop(context);
-                final picker = ImagePicker();
-                final XFile? picked = await picker.pickImage(
-                  source: ImageSource.gallery,
-                  imageQuality: 85,
+                await Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => ProfilePhotoPickerPage(
+                      userId: userId,
+                      currentPhotoUrl: currentUserModel?.photoUrl,
+                    ),
+                  ),
                 );
-                if (picked != null) {
-                  final file = File(picked.path);
-                  await _firestoreService.updateProfilePhoto(userId, file);
-                }
               },
-              child: const Text('Upload Photo'),
+              child: const Text('Change Photo'),
             ),
             CupertinoActionSheetAction(
               isDestructiveAction: true,

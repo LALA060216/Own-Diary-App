@@ -1,120 +1,245 @@
-import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
-import '../services/models/diary_entry_model.dart';
-import 'full_screen_image_page.dart'; // import your full-screen page
+import 'dart:io';
 
-class DetailsDiary extends StatelessWidget {
+import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:intl/intl.dart';
+
+import '../services/firebase_storage_service.dart';
+import '../services/firestore_service.dart';
+import '../services/models/diary_entry_model.dart';
+import 'full_screen_image_page.dart';
+
+class DetailsDiary extends StatefulWidget {
   final DiaryEntryModel diary;
 
   const DetailsDiary({super.key, required this.diary});
 
   @override
-  Widget build(BuildContext context) {
-    // Build a list of TextSpans and WidgetSpans based on placeholders
-    final RegExp imgRegex = RegExp(r'\[img(\d+)\]');
-    final List<InlineSpan> spans = [];
-    int currentIndex = 0;
+  State<DetailsDiary> createState() => _DetailsDiaryState();
+}
 
-    diary.context.splitMapJoin(
-      imgRegex,
-      onMatch: (Match match) {
-        final index = int.parse(match.group(1)!);
-        // Add text before the placeholder
-        spans.add(TextSpan(text: diary.context.substring(currentIndex, match.start)));
-        // Embed the image inline using WidgetSpan with tap & hero
-        if (index < diary.imageUrls.length) {
-          spans.add(
-            WidgetSpan(
-              alignment: PlaceholderAlignment.bottom,
-              child: GestureDetector(
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => FullScreenImagePage(
-                        imageUrls: diary.imageUrls,
-                        initialIndex: index,
-                      ),
-                    ),
-                  );
-                },
-                child: Hero(
-                  tag: diary.imageUrls[index],
-                  child: Image.network(
-                    diary.imageUrls[index],
-                    fit: BoxFit.cover,
-                    width: MediaQuery.of(context).size.width,
-                  ),
-                ),
-              ),
-            ),
-          );
+class _DetailsDiaryState extends State<DetailsDiary> {
+  final FirestoreService _firestoreService = FirestoreService();
+  final FirebaseStorageService _storageService = FirebaseStorageService();
+  final ImagePicker _picker = ImagePicker();
+
+  late final TextEditingController _titleController;
+  late final TextEditingController _contextController;
+
+  late String _currentTitle;
+  late String _currentContext;
+  late List<String> _imageUrls;
+  final List<File> _newImages = [];
+
+  bool _isEditing = false;
+  bool _isSaving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _currentTitle = widget.diary.title;
+    _currentContext = widget.diary.context;
+    _imageUrls = List<String>.from(widget.diary.imageUrls);
+
+    _titleController = TextEditingController(text: _currentTitle);
+    _contextController = TextEditingController(text: _currentContext);
+  }
+
+  @override
+  void dispose() {
+    _titleController.dispose();
+    _contextController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _pickImages() async {
+    if (!_isEditing) return;
+    final List<XFile> pickedFiles = await _picker.pickMultiImage();
+    if (pickedFiles.isEmpty) return;
+    if (!mounted) return;
+    setState(() {
+      _newImages.addAll(pickedFiles.map((file) => File(file.path)));
+    });
+  }
+
+  void _toggleEditMode() {
+    if (_isSaving) return;
+    setState(() {
+      if (_isEditing) {
+        _titleController.text = _currentTitle;
+        _contextController.text = _currentContext;
+        _newImages.clear();
+      }
+      _isEditing = !_isEditing;
+    });
+  }
+
+  Future<void> _saveDiary() async {
+    if (_isSaving) return;
+    setState(() {
+      _isSaving = true;
+    });
+
+    try {
+      final trimmedTitle = _titleController.text.trim();
+      final newContext = _contextController.text;
+      final uploadedUrls = List<String>.from(_imageUrls);
+
+      for (final file in _newImages) {
+        final url = await _storageService.uploadImage(file, widget.diary.userId, widget.diary.id);
+        if (url != null) {
+          uploadedUrls.add(url);
         }
-        currentIndex = match.end;
-        return '';
-      },
-      onNonMatch: (String text) {
-        spans.add(TextSpan(text: text));
-        return '';
-      },
-    );
+      }
 
+      await _firestoreService.updateDiaryEntryTitle(
+        entryId: widget.diary.id,
+        newTitle: trimmedTitle,
+      );
+      await _firestoreService.updateDiaryEntryContext(
+        entryId: widget.diary.id,
+        newContext: newContext,
+      );
+      await _firestoreService.updateDiaryEntryImageUrls(
+        entryId: widget.diary.id,
+        newImageUrls: uploadedUrls,
+      );
+
+      if (!mounted) return;
+      setState(() {
+        _currentTitle = trimmedTitle;
+        _currentContext = newContext;
+        _imageUrls = uploadedUrls;
+        _newImages.clear();
+        _isEditing = false;
+      });
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isSaving = false;
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Diary Details'),
+        actions: [
+          if (_isEditing)
+            IconButton(
+              onPressed: _isSaving ? null : _pickImages,
+              icon: const Icon(Icons.add),
+              tooltip: 'Add Image',
+            ),
+          IconButton(
+            onPressed: _isSaving ? null : (_isEditing ? _saveDiary : _toggleEditMode),
+            icon: Icon(_isEditing ? Icons.check : Icons.edit),
+            tooltip: _isEditing ? 'Save' : 'Edit',
+          ),
+        ],
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            _isEditing
+                ? TextField(
+                    controller: _titleController,
+                    style: const TextStyle(
+                      fontSize: 26,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black87,
+                    ),
+                    decoration: const InputDecoration(
+                      hintText: 'Add a title...',
+                      border: InputBorder.none,
+                    ),
+                  )
+                : Text(
+                    _currentTitle.trim().isEmpty ? 'Untitled' : _currentTitle,
+                    style: const TextStyle(
+                      fontSize: 26,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black87,
+                    ),
+                  ),
+            const SizedBox(height: 8),
             Text(
-              DateFormat('dd MMM yyyy').format(diary.created),
+              DateFormat('dd MMM yyyy').format(widget.diary.created),
               style: const TextStyle(fontSize: 16, color: Colors.grey),
             ),
             const SizedBox(height: 20),
-            // Show all images in a horizontal scroll view
-            if (diary.imageUrls.isNotEmpty)
+            if (_imageUrls.isNotEmpty || _newImages.isNotEmpty)
               SizedBox(
                 height: 200,
-                child: ListView.builder(
+                child: ListView(
                   scrollDirection: Axis.horizontal,
-                  itemCount: diary.imageUrls.length,
-                  itemBuilder: (context, index) {
-                    final url = diary.imageUrls[index];
-                    return Padding(
-                      padding: const EdgeInsets.only(right: 8.0),
-                      child: GestureDetector(
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => FullScreenImagePage(
-                                imageUrls: diary.imageUrls,
-                                initialIndex: index,
+                  children: [
+                    ..._imageUrls.asMap().entries.map((entry) {
+                      final index = entry.key;
+                      final url = entry.value;
+                      return Padding(
+                        padding: const EdgeInsets.only(right: 8.0),
+                        child: GestureDetector(
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => FullScreenImagePage(
+                                  imageUrls: _imageUrls,
+                                  initialIndex: index,
+                                ),
                               ),
+                            );
+                          },
+                          child: Hero(
+                            tag: url,
+                            child: Image.network(
+                              url,
+                              fit: BoxFit.cover,
+                              width: MediaQuery.of(context).size.width * 0.8,
                             ),
-                          );
-                        },
-                        child: Hero(
-                          tag: url,
-                          child: Image.network(
-                            url,
-                            fit: BoxFit.cover,
-                            width: MediaQuery.of(context).size.width * 0.8,
                           ),
                         ),
-                      ),
-                    );
-                  },
+                      );
+                    }),
+                    ..._newImages.map((file) {
+                      return Padding(
+                        padding: const EdgeInsets.only(right: 8.0),
+                        child: Image.file(
+                          file,
+                          fit: BoxFit.cover,
+                          width: MediaQuery.of(context).size.width * 0.8,
+                        ),
+                      );
+                    }),
+                  ],
                 ),
               ),
             const SizedBox(height: 16),
-            // Render combined text and images inline
-            Text.rich(
-              TextSpan(children: spans),
-              style: const TextStyle(fontSize: 18),
-            ),
+            _isEditing
+                ? TextField(
+                    controller: _contextController,
+                    minLines: 6,
+                    maxLines: null,
+                    decoration: const InputDecoration(
+                      hintText: 'Write here...',
+                      border: OutlineInputBorder(),
+                    ),
+                  )
+                : Text(
+                    _currentContext,
+                    style: const TextStyle(fontSize: 18),
+                  ),
+            if (_isSaving)
+              const Padding(
+                padding: EdgeInsets.only(top: 16),
+                child: Center(child: CircularProgressIndicator()),
+              ),
           ],
         ),
       ),

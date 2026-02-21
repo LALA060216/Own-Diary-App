@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/intl.dart';
 import '../services/firestore_service.dart';
@@ -14,11 +15,29 @@ class Diaries extends StatefulWidget {
 
 class _DiariesState extends State<Diaries> {
   DateTime selectedDate = DateTime.now();
+  DateTime? selectedDay;
+  String titleQuery = '';
+  bool isSearchOpen = false;
+  bool _isProgrammaticSearchUpdate = false;
+  final TextEditingController _searchController = TextEditingController();
 
   final FirestoreService firestoreService = FirestoreService();
 
   String? userId;
   Stream<List<DiaryEntryModel>>? diaryStream;
+
+  void _safeSetState(VoidCallback fn) {
+    if (!mounted) return;
+    final phase = SchedulerBinding.instance.schedulerPhase;
+    if (phase == SchedulerPhase.persistentCallbacks ||
+        phase == SchedulerPhase.midFrameMicrotasks) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) setState(fn);
+      });
+    } else {
+      setState(fn);
+    }
+  }
 
   @override
   void initState() {
@@ -34,17 +53,51 @@ class _DiariesState extends State<Diaries> {
   }
 
   void previousMonth() {
-    setState(() {
+    _safeSetState(() {
+      selectedDay = null;
       selectedDate =
           DateTime(selectedDate.year, selectedDate.month - 1);
     });
   }
 
   void nextMonth() {
-    setState(() {
+    _safeSetState(() {
+      selectedDay = null;
       selectedDate =
           DateTime(selectedDate.year, selectedDate.month + 1);
     });
+  }
+
+  Future<void> pickDateFromSearch() async {
+    final pickedDate = await showDatePicker(
+      context: context,
+      initialDate: selectedDay ?? selectedDate,
+      firstDate: DateTime(2000),
+      lastDate: DateTime(2100),
+    );
+    if (pickedDate != null) {
+      _safeSetState(() {
+        selectedDay = pickedDate;
+        selectedDate = pickedDate;
+      });
+    }
+  }
+
+  void _clearAllFilters() {
+    _isProgrammaticSearchUpdate = true;
+    _searchController.clear();
+    _isProgrammaticSearchUpdate = false;
+    if (!mounted) return;
+    _safeSetState(() {
+      titleQuery = '';
+      selectedDay = null;
+    });
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
   }
 
   String monthName(int month) {
@@ -56,6 +109,23 @@ class _DiariesState extends State<Diaries> {
     return months[month - 1];
   }
 
+  List<DiaryEntryModel> _applyDiaryFilters(List<DiaryEntryModel> allDiaries) {
+    return allDiaries.where((d) {
+      final hasBody = d.context.trim().isNotEmpty;
+      final hasImages = d.imageUrls.isNotEmpty;
+      final hasSavableContent = hasBody || hasImages;
+      final titleMatches = titleQuery.isEmpty ||
+          d.title.toLowerCase().contains(titleQuery.toLowerCase());
+      final monthMatches = selectedDay == null
+          ? (d.created.month == selectedDate.month &&
+              d.created.year == selectedDate.year)
+          : true;
+      final dateMatches = selectedDay != null
+          ? DateUtils.isSameDay(d.created, selectedDay)
+          : true;
+      return monthMatches && hasSavableContent && titleMatches && dateMatches;
+    }).toList();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -239,19 +309,21 @@ Future<bool?> showDeleteConfirmationDialog(BuildContext context) {
               const Spacer(),
 
               IconButton(
-                icon: const Icon(Icons.calendar_month),
-                onPressed: () async {
-                  DateTime? pickedDate =
-                      await showDatePicker(
-                    context: context,
-                    initialDate: selectedDate,
-                    firstDate: DateTime(2000),
-                    lastDate: DateTime(2100),
-                  );
-
-                  if (pickedDate != null) {
-                    setState(() {
-                      selectedDate = pickedDate;
+                icon: Icon(isSearchOpen ? Icons.close : Icons.search),
+                onPressed: () {
+                  if (isSearchOpen) {
+                    _isProgrammaticSearchUpdate = true;
+                    _searchController.clear();
+                    _isProgrammaticSearchUpdate = false;
+                    if (!mounted) return;
+                    _safeSetState(() {
+                      isSearchOpen = false;
+                      titleQuery = '';
+                      selectedDay = null;
+                    });
+                  } else {
+                    _safeSetState(() {
+                      isSearchOpen = true;
                     });
                   }
                 },
@@ -263,6 +335,81 @@ Future<bool?> showDeleteConfirmationDialog(BuildContext context) {
               ),
             ],
           ),
+
+          if (isSearchOpen)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFEFEFEF),
+                        borderRadius: BorderRadius.circular(24),
+                      ),
+                      child: TextField(
+                        controller: _searchController,
+                        onChanged: (value) {
+                          if (_isProgrammaticSearchUpdate || !mounted) return;
+                          _safeSetState(() {
+                            titleQuery = value.trim();
+                          });
+                        },
+                        decoration: InputDecoration(
+                          hintText: 'Search title',
+                          border: InputBorder.none,
+                          prefixIcon: const Icon(Icons.search, color: Colors.black54),
+                          suffixIcon: IconButton(
+                            icon: const Icon(Icons.calendar_month, color: Colors.black54),
+                            onPressed: pickDateFromSearch,
+                          ),
+                          contentPadding: const EdgeInsets.symmetric(vertical: 14),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  TextButton(
+                    onPressed: _clearAllFilters,
+                    child: const Text('Clear'),
+                  ),
+                ],
+              ),
+            ),
+
+          if (selectedDay != null)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFEDEDED),
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          DateFormat('dd MMM yyyy').format(selectedDay!),
+                          style: const TextStyle(fontSize: 13),
+                        ),
+                        const SizedBox(width: 6),
+                        GestureDetector(
+                          onTap: () {
+                            _safeSetState(() {
+                              selectedDay = null;
+                            });
+                          },
+                          child: const Icon(Icons.close, size: 16),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
 
           Expanded(
             child: StreamBuilder<List<DiaryEntryModel>>(
@@ -287,15 +434,19 @@ Future<bool?> showDeleteConfirmationDialog(BuildContext context) {
                       child: Text("No diaries yet"));
                 }
 
-                final diaries =
-                    snapshot.data!.where((d) {
-                  return d.created.month ==
-                          selectedDate.month &&
-                      d.created.year ==
-                          selectedDate.year;
-                }).toList();
+                final diaries = _applyDiaryFilters(snapshot.data!);
 
                 if (diaries.isEmpty) {
+                  if (selectedDay != null) {
+                    return const Center(
+                      child: Text('No diary was created on this day'),
+                    );
+                  }
+                  if (titleQuery.isNotEmpty) {
+                    return const Center(
+                      child: Text('No diary matched your search'),
+                    );
+                  }
                   return const Center(
                       child:
                           Text("No diaries this month"));
@@ -316,8 +467,8 @@ Future<bool?> showDeleteConfirmationDialog(BuildContext context) {
                         borderRadius: BorderRadius.circular(12),
                         child: InkWell(
                           borderRadius: BorderRadius.circular(12),
-                          splashColor: Theme.of(context).primaryColor.withOpacity(0.2),
-                          highlightColor: Theme.of(context).primaryColor.withOpacity(0.1),
+                          splashColor: Theme.of(context).primaryColor.withValues(alpha: 0.2),
+                          highlightColor: Theme.of(context).primaryColor.withValues(alpha: 0.1),
                           onTap: () {
                             Navigator.push(
                               context,
@@ -352,6 +503,13 @@ Future<bool?> showDeleteConfirmationDialog(BuildContext context) {
                                     ),
                                   ],
                                 ),
+                                Text(
+                                  diary.title.trim().isEmpty ? 'Untitled' : diary.title,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w600),
+                                ),
+                                const SizedBox(height: 4),
                                 Text(
                                   diary.context,
                                   maxLines: 2,
