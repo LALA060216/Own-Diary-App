@@ -1,5 +1,12 @@
+import 'dart:convert';
+import 'dart:async';
+import 'package:diaryapp/services/firestore_service.dart';
+import 'package:diaryapp/services/gemini_service.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+﻿
 import 'dart:io';
 import 'dart:convert';
+import 'dart:async';
 import 'package:diaryapp/services/firestore_service.dart';
 import 'package:diaryapp/services/gemini_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -16,7 +23,8 @@ class NewDiary extends StatefulWidget{
   final TextEditingController? previousDiaryController;
   final List<String>? previousImageUrls;
   final String? diaryId;
-  const NewDiary({super.key, this.imageFile, this.previousDiaryController, this.previousImageUrls, this.diaryId});
+  final String? previousTitle;
+  const NewDiary({super.key, this.imageFile, this.previousDiaryController, this.previousImageUrls, this.diaryId, this.previousTitle});
 
   @override
   State<NewDiary> createState() => _NewDiaryState();
@@ -48,21 +56,53 @@ class _NewDiaryState extends State<NewDiary> {
   final TextEditingController _diaryController = TextEditingController();
   bool error = false;
   String errorMessage = "Failed to upload image";
+  final TextEditingController _titleController = TextEditingController();
   final chatModel = AIChatModel(
       prompt: 'You are a helpful assistant that generates keywords based on the diary entry. Extract between 1 to 5 numbers of keywords from the following diary entry and return them ONLY as a JSON array of strings with no additional text or explanation. Example format: ["keyword1", "keyword2", "keyword3", "keyword4", "keyword5"]\nIf have any forbidden content, just return a empty list\n',
       model: 'gemma-3-27b-it'
     );
+  final titleChatModel = AIChatModel(
+      prompt: 'Generate one short diary title based on the diary content. Keep it natural, specific, and between 3 to 8 words. Return ONLY the title text without quotes, labels, markdown, or extra explanation.',
+      model: 'gemma-3-27b-it'
+    );
+  Timer? _titleDebounceTimer;
+  bool _isGeneratingTitle = false;
+  bool _isApplyingAiTitle = false;
+  bool _isTitleManuallyEdited = false;
+  bool _isDisposed = false;
 
   // initialize controller listenable
   @override
   void initState() {
     super.initState();
+    _titleController.addListener(() async {
+      try {
+        if (!_isApplyingAiTitle) {
+          _isTitleManuallyEdited = true;
+          _titleDebounceTimer?.cancel();
+        }
+        if (_id.isEmpty) return;
+
+        await _firestoreService.updateDiaryEntryTitle(
+          entryId: _id,
+          newTitle: _titleController.text,
+        );
+      } catch (_) {
+        // Ignore transient write failures from listener updates.
+      }
+    });
 
     
     _id = widget.diaryId ?? '';
     if (widget.previousDiaryController != null) {
       _diaryController.text = widget.previousDiaryController!.text;
       created = true;
+    }
+    if (widget.previousTitle != null) {
+      _titleController.text = widget.previousTitle!;
+      if (widget.previousTitle!.trim().isNotEmpty) {
+        _isTitleManuallyEdited = true;
+      }
     }
     if (widget.previousImageUrls != null) {
       previousImageUrls = widget.previousImageUrls!;
@@ -73,14 +113,69 @@ class _NewDiaryState extends State<NewDiary> {
       createDiaryFromCam();
     }
     _diaryController.addListener(() async {
-    if (_images.isEmpty && _diaryController.text.isEmpty && previousImageUrls.isEmpty) {
-        await deleteDiary();
-        return;
+      try {
+        if (_images.isEmpty && _diaryController.text.isEmpty && previousImageUrls.isEmpty) {
+          await deleteDiary();
+          return;
+        }
+        _scheduleAiTitleGeneration();
+        await waitDiaryCreate();
+        await aupdateDiary(_diaryController.text);
+      } catch (_) {
+        // Ignore listener-driven transient failures.
       }
-      await waitDiaryCreate();
-      await aupdateDiary(_diaryController.text);
     });
       
+  }
+
+  void _scheduleAiTitleGeneration() {
+    if (_isTitleManuallyEdited) return;
+    _titleDebounceTimer?.cancel();
+    final diaryText = _diaryController.text.trim();
+    if (diaryText.length < 10) return;
+    _titleDebounceTimer = Timer(const Duration(seconds: 2), () {
+      _generateAiTitleIfNeeded();
+    });
+  }
+
+  String _sanitizeGeneratedTitle(String rawTitle) {
+    String title = rawTitle.trim();
+    if (title.startsWith('Error:')) return '';
+    title = title.split('\n').first.trim();
+    title = title.replaceAll(RegExp(r'^"|"$'), '');
+    title = title.replaceAll(RegExp(r"^'|'$"), '');
+    if (title.length > 70) {
+      title = title.substring(0, 70).trim();
+    }
+    return title;
+  }
+
+  Future<void> _generateAiTitleIfNeeded() async {
+    if (!mounted || _isDisposed) return;
+    if (_isGeneratingTitle) return;
+    if (_isTitleManuallyEdited) return;
+    if (_titleController.text.trim().isNotEmpty) return;
+    final diaryText = _diaryController.text.trim();
+    if (diaryText.length < 10) return;
+
+    _isGeneratingTitle = true;
+    try {
+      final shortenedInput = diaryText.length > 500 ? diaryText.substring(0, 500) : diaryText;
+      final generated = await GeminiService(chatModel: titleChatModel).sendMessage(shortenedInput);
+      final title = _sanitizeGeneratedTitle(generated);
+      if (title.isEmpty) return;
+      if (!mounted || _isDisposed) return;
+      if (_titleController.text.trim().isNotEmpty) return;
+      _isApplyingAiTitle = true;
+      _titleController.text = title;
+      _titleController.selection = TextSelection.fromPosition(
+        TextPosition(offset: _titleController.text.length),
+      );
+      _isApplyingAiTitle = false;
+    } finally {
+      _isGeneratingTitle = false;
+      _isApplyingAiTitle = false;
+    }
   }
 
 
@@ -98,7 +193,7 @@ class _NewDiaryState extends State<NewDiary> {
   Future<void> waitDiaryCreate() async {
     if (_id.isNotEmpty) return;
     if (created) return;
-    if (_images.isEmpty && _diaryController.text.isEmpty) return;
+    if (_images.isEmpty && _diaryController.text.trim().isEmpty) return;
     created = true;
     await createNewDiary();
     
@@ -114,6 +209,7 @@ class _NewDiaryState extends State<NewDiary> {
       _firestoreService.incrementDiaryPostCount(_userId);
       _id = await _firestoreService.createDiaryEntry(
         userId: _userId,
+        title: _titleController.text.trim(),
         context: '',
         imageUrls: [],
         date: date,
@@ -129,7 +225,7 @@ class _NewDiaryState extends State<NewDiary> {
   //---------------------- Diary Update and Image Upload ------------------//
   
   Future<void> aupdateDiary(String context) async {
-    if (_images.isNotEmpty && _id.isNotEmpty || _diaryController.text.isNotEmpty && _id.isNotEmpty) {
+    if (_images.isNotEmpty && _id.isNotEmpty || _diaryController.text.trim().isNotEmpty && _id.isNotEmpty) {
       try {
         await _firestoreService.updateDiaryEntryContext(
           entryId: _id,
@@ -221,7 +317,7 @@ class _NewDiaryState extends State<NewDiary> {
       }
     }
     await updateImageUrls();
-    if (_images.isEmpty && _diaryController.text.isEmpty) {
+    if (_images.isEmpty && _diaryController.text.trim().isEmpty && previousImageUrls.isEmpty) {
         await deleteDiary();
     }
   }
@@ -230,22 +326,44 @@ class _NewDiaryState extends State<NewDiary> {
 
   @override
   void dispose() {
-    // Generate keywords in the background without blocking dispose
-    if (_id.isNotEmpty && _diaryController.text.isNotEmpty) {
-      GeminiService(chatModel: chatModel).sendMessage(_diaryController.text).then((keywords) async {
+    _isDisposed = true;
+    final diaryTextAtDispose = _diaryController.text.trim();
+    final titleAtDispose = _titleController.text.trim();
+    final entryIdAtDispose = _id;
+
+    // Generate title in background without touching disposed controllers
+    _titleDebounceTimer?.cancel();
+    if (!_isTitleManuallyEdited && diaryTextAtDispose.length >= 20 && titleAtDispose.isEmpty) {
+      GeminiService(chatModel: titleChatModel).sendMessage(diaryTextAtDispose).then((generated) async {
+        final title = _sanitizeGeneratedTitle(generated);
+        if (title.isEmpty) return;
+        if (_isTitleManuallyEdited) return;
+
+        if (entryIdAtDispose.isNotEmpty) {
+          await _firestoreService.updateDiaryEntryTitle(
+            entryId: entryIdAtDispose,
+            newTitle: title,
+          );
+        }
+      });
+    }
+
+    _titleController.dispose();
+    if (entryIdAtDispose.isNotEmpty && diaryTextAtDispose.isNotEmpty) {
+      GeminiService(chatModel: chatModel).sendMessage(diaryTextAtDispose).then((keywords) async {
         try {
           // Parse the JSON array response
           List<dynamic> keywordList = jsonDecode(keywords);
           List<String> parsedKeywords = keywordList.map((k) => k.toString().trim()).toList();
           
           await _firestoreService.updateDiaryEntryKeywords(
-            entryId: _id,
+            entryId: entryIdAtDispose,
             newKeywords: parsedKeywords
           );
         } catch (e) {
           // Fallback to comma-separated parsing if JSON fails
           await _firestoreService.updateDiaryEntryKeywords(
-            entryId: _id,
+            entryId: entryIdAtDispose,
             newKeywords: keywords.split(',').map((k) => k.trim()).toList()
           );
         }
@@ -407,6 +525,29 @@ class _NewDiaryState extends State<NewDiary> {
       ),
       child: Column(
         children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            child: TextField(
+              controller: _titleController,
+              style: const TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+              ),
+              decoration: const InputDecoration(
+                hintText: "Add a title...",
+                hintStyle: TextStyle(
+                  color: Color(0xFFB0B0B0),
+                  fontWeight: FontWeight.w500,
+                ),
+                border: InputBorder.none,
+              ),
+            ),
+          ),
+          Divider(
+            height: 1,
+            thickness: 1.5,
+            color: Color(0xfff1e9d2),
+          ),
           Container(
             padding: EdgeInsets.all(16),
             child: Row(

@@ -42,6 +42,7 @@ class _HomepageState extends State<Homepage> with RouteAware{
   '1) If the diary entry describes emotions but DOES NOT mention physical symptoms or health, default the health_index to 0'+
   '2) Do not include any other text, explanations, or formatting. Just the two numbers. Example: 5 10. Bad response: 08 06';
   late AIChatModel _chatModel = AIChatModel(prompt: prompt, model: 'gemma-3-27b-it');
+  String previousTitle = '';
 
   List<dynamic> healthIcons = [
     FontAwesomeIcons.heartPulse,
@@ -173,6 +174,8 @@ class _HomepageState extends State<Homepage> with RouteAware{
     _previousDiaryController.text = newestDiary?.context ?? '';
     imageUrls = newestDiary?.imageUrls ?? [];
     diaryId = newestDiary?.id;
+    previousTitle = newestDiary?.title ?? '';
+
     if (!mounted) return ;
     setState(() {
       createdNewDiaryToday = newestDate != null && DateUtils.isSameDay(newestDate, DateTime.now());
@@ -511,7 +514,7 @@ class _HomepageState extends State<Homepage> with RouteAware{
           onPressed: () {
             Navigator.push(
               context,
-              MaterialPageRoute(builder: (context) => NewDiary(previousDiaryController: _previousDiaryController, previousImageUrls: imageUrls, diaryId: diaryId)),
+              MaterialPageRoute(builder: (context) => NewDiary(previousDiaryController: _previousDiaryController, previousImageUrls: imageUrls, diaryId: diaryId, previousTitle: previousTitle)),
             );
           },
           style: ElevatedButton.styleFrom(
