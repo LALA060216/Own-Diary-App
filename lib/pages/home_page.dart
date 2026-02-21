@@ -98,7 +98,7 @@ class _HomepageState extends State<Homepage> with RouteAware{
               Spacer(),
               Padding(
                 padding: const EdgeInsets.only(right: 15.0, top: 40),
-                child: streakContainer(90, int.parse(streak)),
+                child: streakContainer(90, streak != '' ? int.parse(streak) : 0),
               ),
               SizedBox(
                 width: 1,
