@@ -49,7 +49,7 @@ class _NewDiaryState extends State<NewDiary> {
   bool error = false;
   String errorMessage = "Failed to upload image";
   final chatModel = AIChatModel(
-      prompt: 'You are a helpful assistant that generates keywords based on the diary entry. Extract some relevant keywords but not exceed 5 keywords from the following diary entry and return them ONLY as a JSON array of strings with no additional text or explanation. Example format: ["keyword1", "keyword2", "keyword3", "keyword4", "keyword5"]\nIf have any forbidden content, just return a empty list\n',
+      prompt: 'You are a helpful assistant that generates keywords based on a diary entry. Extract the most essential keywords, using between 1 to 5 keywords depending on the complexity of the text. Do not force the output to 5 keywords; if 2 keywords are enough to describe the event, only return 2. \nReturn the result ONLY as a JSON array of strings. If forbidden content is detected, return an empty list.\n Example format: ["keyword1", "keyword2"]',
       model: 'gemma-3-27b-it'
     );
 
