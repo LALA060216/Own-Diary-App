@@ -1,7 +1,10 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:google_generative_ai/google_generative_ai.dart';
+import 'dart:convert';
 import '../services/gemini_service.dart';
 import '../services/models/ai_chat_model.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class AISummaryPage extends StatefulWidget {
 
@@ -17,25 +20,94 @@ class _ASummaryPageState extends State<AISummaryPage> {
   final List<_ChatMessage> _messages = [];
   bool is_sending = false;
 
-  late final GeminiService _geminiService;
+  late final GeminiService _geminiServiceKeyWord;
+  late final GeminiService _geminiServiceSummary;
   final List<Content> _chatHistory = [];
 
+  Future<List<String>> _fetchDiaryEntriesWithKeyword(List<String> keywords) async {
+    if (keywords.isEmpty) {
+      return [];
+    }
+
+    Query query = FirebaseFirestore.instance
+        .collection('diaryEntries')
+        .where('userId', isEqualTo: FirebaseAuth.instance.currentUser!.uid);
+
+    if (keywords.isNotEmpty) {
+      if (keywords.length == 1) {
+        query = query.where('keywords', arrayContains: keywords.first);
+      } else {
+        query = query.where('keywords', arrayContainsAny: keywords);
+      }
+    }
+
+    final querySnapshot = await query.get();
+
+    List<String> allContexts = [];
+    for (var doc in querySnapshot.docs) {
+      String context = doc['context'] ?? '';
+      allContexts.add(context);
+    }
+    return allContexts;
+  }
+
+  List<String> _normalizeKeywords(List<String> keywords) {
+    final List<String> normalized = [];
+    for (final keyword in keywords) {
+      final parts = keyword.split(',');
+      for (final part in parts) {
+        final cleaned = part.trim();
+        if (cleaned.isNotEmpty) {
+          normalized.add(cleaned);
+        }
+      }
+    }
+    return normalized;
+  }
+
+  List<String> _parseKeywords(String keywordResponse) {
+    try {
+      final decoded = jsonDecode(keywordResponse);
+      if (decoded is List) {
+        return _normalizeKeywords(
+          decoded.map((k) => k.toString().trim()).toList(),
+        );
+      }
+    } catch (_) {
+      // Fallback to comma-separated parsing if JSON fails.
+      return _normalizeKeywords(
+        keywordResponse
+            .split(',')
+            .map((k) => k.trim())
+            .where((k) => k.isNotEmpty)
+            .toList(),
+      );
+    }
+    return [];
+  }
+  
   @override
   void initState(){
     super.initState();
     // Initialize AIChatModel
-    final chatModel = AIChatModel(
-      prompt: "talk something and give me some advice",
+    final chatModelKeyWord = AIChatModel(
+      prompt: 'You are a helpful assistant that generates keywords based on the diary entry.\nExtract between 1 to 5 keywords from the following diary entry and return them ONLY as a JSON array of strings with no additional text or explanation.\nIf the diary entry contains the word "why" (case-insensitive), you MUST include the keyword "why" in the output array even if it is not one of the main topics.\nIf have any forbidden content, just return a empty list [].\nExample format: ["keyword1", "keyword2", "keyword3", "keyword4", "keyword5"]',
+      model: 'gemma-3-27b-it'
+    );
+    final chatModelSummary = AIChatModel(
+      prompt: 'Talk only about the provided diary entries and the user input, staying directly relevant to them with no extra assumptions or unrelated information.\nReturn a concise response.',
       model: 'gemma-3-27b-it'
     );
     
     // Initialize GeminiService with the model
-    _geminiService = GeminiService(chatModel: chatModel);
+    _geminiServiceKeyWord = GeminiService(chatModel: chatModelKeyWord);
+    _geminiServiceSummary = GeminiService(chatModel: chatModelSummary);
   }
 
   Future<void> _sendMessage() async {
     final text = _controller.text;
     if (text.isEmpty || is_sending) return;
+    print(  'User input: $text');
 
     setState((){
       _messages.add(_ChatMessage(role: _Role.user, text: text));
@@ -46,12 +118,17 @@ class _ASummaryPageState extends State<AISummaryPage> {
     _chatHistory.add(Content.text(text));
 
     try{
-      final reply = await _geminiService.sendMessageWithHistory(text, _chatHistory);
+      final keywordResponse = await _geminiServiceKeyWord.sendMessage(text);
+      print('keywordResponse: $keywordResponse');
+      final keywords = _parseKeywords(keywordResponse);
+      final contexts = await _fetchDiaryEntriesWithKeyword(keywords);
+      print('contexts: $contexts');
+      final summary = await _geminiServiceSummary.sendMessageWithDiaryEntry(text, contexts);
 
       setState(() {
-        _messages.add(_ChatMessage(role: _Role.ai, text: reply));
+        _messages.add(_ChatMessage(role: _Role.ai, text: summary));
         // Add AI response to chat history
-        _chatHistory.add(Content.text(reply));
+        _chatHistory.add(Content.text(summary));
         is_sending = false;
         _controller.clear();
       });
