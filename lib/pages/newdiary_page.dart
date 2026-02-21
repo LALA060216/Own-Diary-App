@@ -53,8 +53,6 @@ class _NewDiaryState extends State<NewDiary> {
       model: 'gemma-3-27b-it'
     );
 
-
-
   // initialize controller listenable
   @override
   void initState() {

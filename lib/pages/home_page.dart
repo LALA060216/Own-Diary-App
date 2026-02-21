@@ -8,6 +8,9 @@ import 'newdiary_page.dart';
 
 bool createdNewDiaryToday = false;
 String streak = '';
+int indexForHealth = 0;
+int indexForMood = 0;
+
 class Homepage extends StatefulWidget {
   const Homepage({super.key});
   
@@ -97,7 +100,7 @@ class _HomepageState extends State<Homepage> with RouteAware{
               ),
               Spacer(),
               Padding(
-                padding: const EdgeInsets.only(right: 15.0, top: 40),
+                padding: const EdgeInsets.only(right: 20.0, top: 40),
                 child: streakContainer(90, streak != '' ? int.parse(streak) : 0),
               ),
               SizedBox(
@@ -295,66 +298,6 @@ class _HomepageState extends State<Homepage> with RouteAware{
         ),
         SizedBox(
           height: 20,
-        ),
-        // button for emotion
-        SizedBox(
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [ 
-              // button for wealth
-              SizedBox(
-                width: maxWidth * 0.45,
-                height: maxWidth * 0.45,
-                child: Container(
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(30),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Color.fromARGB(100, 0, 0, 0),
-                        blurRadius: 20,
-                        spreadRadius: 2,
-                        offset: Offset(0, 10),
-                      ),
-                      BoxShadow(
-                        color: Color.fromARGB(80, 200, 180, 100),
-                        blurRadius: 15,
-                        spreadRadius: 1,
-                        offset: Offset(0, 5),
-                      ),
-                    ],
-                  ),
-                  child: Ink(
-                    decoration: BoxDecoration(
-                      image: DecorationImage(
-                        image: AssetImage('assets/images/gold_background.jpg'),
-                        fit: BoxFit.cover,
-                      ),
-                      borderRadius: BorderRadius.circular(30),
-                    ),
-                    child: ElevatedButton(
-                      onPressed: null,
-                      style: ElevatedButton.styleFrom(
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(30),
-                        ),
-                        elevation: 0,
-                        shadowColor: Colors.transparent,
-                        backgroundColor: Colors.transparent,
-                      ), 
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(FontAwesomeIcons.moneyBills, color: const Color.fromARGB(255, 255, 255, 255), size: maxWidth * 0.15), 
-                          Padding(padding:  EdgeInsets.only(bottom: maxWidth * 0.02)), 
-                          Text('Wealth', style: TextStyle(fontSize: maxWidth * 0.09, color: const Color.fromARGB(255, 255, 255, 255), fontWeight: FontWeight.bold)),
-                        ],
-                      )
-                    ),
-                  ),
-                ),
-              ),
-            ]
-          ),
         ),
         SizedBox(
           height: 150,
