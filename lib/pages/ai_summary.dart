@@ -6,6 +6,7 @@ import '../services/gemini_service.dart';
 import '../services/models/ai_chat_model.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
+final List<_ChatMessage> _messages = [];
 class AISummaryPage extends StatefulWidget {
 
   const AISummaryPage({super.key});
@@ -17,7 +18,7 @@ class AISummaryPage extends StatefulWidget {
 class _ASummaryPageState extends State<AISummaryPage> {
   final _controller = TextEditingController();
   final _scrollController = ScrollController();
-  final List<_ChatMessage> _messages = [];
+  
   bool is_sending = false;
 
   late final GeminiService _geminiServiceKeyWord;
@@ -91,11 +92,11 @@ class _ASummaryPageState extends State<AISummaryPage> {
     super.initState();
     // Initialize AIChatModel
     final chatModelKeyWord = AIChatModel(
-      prompt: 'You are a helpful assistant that generates keywords based on the diary entry.\nExtract between 1 to 5 keywords from the following diary entry and return them ONLY as a JSON array of strings with no additional text or explanation.\nIf the diary entry contains the word "why" (case-insensitive), you MUST include the keyword "why" in the output array even if it is not one of the main topics.\nIf have any forbidden content, just return a empty list [].\nExample format: ["keyword1", "keyword2", "keyword3", "keyword4", "keyword5"]',
+      prompt: 'You are a keyword extraction assistant for a diary search system.\nTask:\nExtract keywords from the user text to help find related diary entries.\nIMPORTANT:\nDo NOT ignore meaningful words. Preserve important details such as people (friend, mom, boss, girlfriend), places (school, office, beach, japan), events (exam, meeting, trip, argument), emotions (stress, happy, angry, anxious), and activities (study, travel, dinner, workout).\nRules:\n- Return 5 to 10 keywords\n- Use lowercase\n- No duplicates\n- Single words or short phrases\n- Keep specific nouns if present\n- Include synonyms only if helpful\n- Do NOT remove words just because they seem common if they carry meaning\return empty list if nothing\nFormat:Example format: ["keyword1", "keyword2", "keyword3", "keyword4", "keyword5"]',
       model: 'gemma-3-27b-it'
     );
     final chatModelSummary = AIChatModel(
-      prompt: 'Talk only about the provided diary entries and the user input, staying directly relevant to them with no extra assumptions or unrelated information.\nReturn a concise response.',
+      prompt: 'Talk only about the provided diary entries and the text, staying directly relevant to them with no extra assumptions or unrelated information.\nReturn a concise response.',
       model: 'gemma-3-27b-it'
     );
     
@@ -118,7 +119,7 @@ class _ASummaryPageState extends State<AISummaryPage> {
     _chatHistory.add(Content.text(text));
 
     try{
-      final keywordResponse = await _geminiServiceKeyWord.sendMessage(text);
+      final keywordResponse = await _geminiServiceKeyWord.sendMessage('user text: $text');
       print('keywordResponse: $keywordResponse');
       final keywords = _parseKeywords(keywordResponse);
       final contexts = await _fetchDiaryEntriesWithKeyword(keywords);
