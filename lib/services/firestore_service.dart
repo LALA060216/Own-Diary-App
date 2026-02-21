@@ -225,6 +225,21 @@ class FirestoreService {
     }
   }
 
+
+  /// Update diary entry keywords
+  Future<void> updateDiaryEntryKeywords({
+    required String entryId,
+    required List<String> newKeywords
+  }) async {
+    try {
+      await diaryEntriesCollection.doc(entryId).update({
+        'keywords': newKeywords,
+      });
+    } catch (e) {
+      rethrow;
+    }
+  }
+
   /// Get all diary entries for a user
   Future<List<DiaryEntryModel>> getUserDiaryEntries(String userId) async {
     try {
@@ -272,12 +287,14 @@ class FirestoreService {
     required String context,
     required DateTime date,
     List<String> imageUrls = const [],
+    List<String> keywords = const [],
   }) async {
     final newEntry = DiaryEntryModel(
       id: '',
       userId: userId,
       context: context,
       imageUrls: imageUrls,
+      keywords: keywords,
       created: date,
       updatedAt: date,
     );

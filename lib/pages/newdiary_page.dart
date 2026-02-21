@@ -1,11 +1,14 @@
 import 'dart:io';
+import 'dart:convert';
 import 'package:diaryapp/services/firestore_service.dart';
+import 'package:diaryapp/services/gemini_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:diaryapp/services/firebase_storage_service.dart';
 import 'camera_page.dart';
 import 'full_screen_image_page.dart';
+import 'package:diaryapp/services/models/ai_chat_model.dart';
 // 魔丸
 
 class NewDiary extends StatefulWidget{
@@ -27,6 +30,9 @@ class _NewDiaryState extends State<NewDiary> {
   final _firestoreService = FirestoreService();
   final _firebaseStorageService = FirebaseStorageService();
   final _userId = FirebaseAuth.instance.currentUser!.uid;
+
+
+  
   
   final DateTime date = DateTime.now();
   bool isLoading = false;
@@ -42,6 +48,10 @@ class _NewDiaryState extends State<NewDiary> {
   final TextEditingController _diaryController = TextEditingController();
   bool error = false;
   String errorMessage = "Failed to upload image";
+  final chatModel = AIChatModel(
+      prompt: 'You are a helpful assistant that generates keywords based on the diary entry. Extract some relevant keywords but not exceed 5 keywords from the following diary entry and return them ONLY as a JSON array of strings with no additional text or explanation. Example format: ["keyword1", "keyword2", "keyword3", "keyword4", "keyword5"]\nIf have any forbidden content, just return a empty list\n',
+      model: 'gemma-3-27b-it'
+    );
 
 
 
@@ -49,6 +59,8 @@ class _NewDiaryState extends State<NewDiary> {
   @override
   void initState() {
     super.initState();
+
+    
     _id = widget.diaryId ?? '';
     if (widget.previousDiaryController != null) {
       _diaryController.text = widget.previousDiaryController!.text;
@@ -220,6 +232,28 @@ class _NewDiaryState extends State<NewDiary> {
 
   @override
   void dispose() {
+    // Generate keywords in the background without blocking dispose
+    if (_id.isNotEmpty && _diaryController.text.isNotEmpty) {
+      GeminiService(chatModel: chatModel).sendMessage(_diaryController.text).then((keywords) async {
+        try {
+          // Parse the JSON array response
+          List<dynamic> keywordList = jsonDecode(keywords);
+          List<String> parsedKeywords = keywordList.map((k) => k.toString().trim()).toList();
+          
+          await _firestoreService.updateDiaryEntryKeywords(
+            entryId: _id,
+            newKeywords: parsedKeywords
+          );
+        } catch (e) {
+          // Fallback to comma-separated parsing if JSON fails
+          await _firestoreService.updateDiaryEntryKeywords(
+            entryId: _id,
+            newKeywords: keywords.split(',').map((k) => k.trim()).toList()
+          );
+        }
+      });
+    }
+    
     _diaryController.dispose();
     super.dispose();
   }

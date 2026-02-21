@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_generative_ai/google_generative_ai.dart';
+import '../services/gemini_service.dart';
+import '../services/models/ai_chat_model.dart';
 
 class AISummaryPage extends StatefulWidget {
 
@@ -15,17 +17,24 @@ class _ASummaryPageState extends State<AISummaryPage> {
   final List<_ChatMessage> _messages = [];
   bool is_sending = false;
 
-  late final GenerativeModel _model;
+  late final GeminiService _geminiService;
+  final List<Content> _chatHistory = [];
 
   @override
   void initState(){
     super.initState();
-    const apiKey = 'AIzaSyCcLIyQT03Skh9Cr4l-b7acBDF8pfjgwiw';
-    _model = GenerativeModel(model: 'gemini-2.5-flash', apiKey: apiKey);
+    // Initialize AIChatModel
+    final chatModel = AIChatModel(
+      prompt: "talk something and give me some advice",
+      model: 'gemma-3-27b-it'
+    );
+    
+    // Initialize GeminiService with the model
+    _geminiService = GeminiService(chatModel: chatModel);
   }
 
   Future<void> _sendMessage() async {
-    final text = _controller.text.trim();
+    final text = _controller.text;
     if (text.isEmpty || is_sending) return;
 
     setState((){
@@ -33,16 +42,16 @@ class _ASummaryPageState extends State<AISummaryPage> {
       is_sending = true;
     });
 
-    try{
-      final chat = _model.startChat(
-        history: _messages.map((m) => Content.text(m.text)).toList(),
-      );
+    // Add user message to chat history
+    _chatHistory.add(Content.text(text));
 
-      final response = await chat.sendMessage(Content.text(text));
-      final reply = response.text ?? "Sorry, I couldn't generate a response.";
+    try{
+      final reply = await _geminiService.sendMessageWithHistory(text, _chatHistory);
 
       setState(() {
         _messages.add(_ChatMessage(role: _Role.ai, text: reply));
+        // Add AI response to chat history
+        _chatHistory.add(Content.text(reply));
         is_sending = false;
         _controller.clear();
       });
