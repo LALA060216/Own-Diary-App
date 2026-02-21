@@ -76,268 +76,285 @@ class _HomepageState extends State<Homepage> with RouteAware{
     });
     return Scaffold(
       backgroundColor: Color(0xfff5f5f5),
-      appBar: AppBar(
-        automaticallyImplyLeading: false,
-        shadowColor: Color(0xffEDEADE),
-        elevation: 2,
-        backgroundColor: Color(0xfffffaf0),
-        
-        title: Text(
-          'TheDiary', 
-          style: TextStyle(
-            fontSize: 40,
-            fontFamily: 'Lobstertwo'
-          ),
-        ), 
-        centerTitle: true
-      
-      ),
-      body: LayoutBuilder(
-        builder: (context, constraints) {
-          double maxWidth = constraints.maxWidth * 0.8;
-          return SingleChildScrollView(
-            child: Center(
-              child: Column(
-                children: [
-              SizedBox(
-                height: 30,
-              ),
-              new_diary_button(context, width: maxWidth),
-              SizedBox(
-                height: 30,
-              ),
-              if (createdNewDiaryToday) 
-                edit_diary_button(context, width: maxWidth)
-              else
-                Text(
-                  "You haven't created a diary today. Let's write one!",
-                  style: TextStyle(fontSize: 16, color: Colors.red),
-                ),
-              SizedBox(
-                height: 40,
-              ),
-              SizedBox(
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [ 
-                      SizedBox(
-                        width: maxWidth * 0.45,
-                        height: maxWidth * 0.45,
-                        child: Container(
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(30),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Color.fromARGB(80, 162, 74, 30),
-                                blurRadius: 20,
-                                spreadRadius: 2,
-                                offset: Offset(0, 15),
-                              ),
-                            ],
-                          ),
-                          child: Ink(
-                            decoration: BoxDecoration(
-                              image: DecorationImage(
-                                image: AssetImage('assets/images/simple_abstract_background_6819442.jpg'),
-                                fit: BoxFit.cover,
-                              ),
-                              borderRadius: BorderRadius.circular(30),
-                            ),
-                            child: ElevatedButton(
-                              onPressed: null,
-                              style: ElevatedButton.styleFrom(
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(30),
-                                ),
-                                elevation: 0,
-                              ), 
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(Icons.local_fire_department_rounded, color: const Color.fromARGB(255, 255, 255, 255), size: maxWidth * 0.18),
-                                  Text(streak, style: TextStyle(fontSize: maxWidth * 0.1, color: const Color.fromARGB(255, 255, 255, 255), fontWeight: FontWeight.bold)),
-                                ],
-                              )
-                            ),
-                          ),
-                        ),
-                      ),
-                      SizedBox(
-                        width: 40,
-                      ),
-                      SizedBox(
-                        width: maxWidth * 0.45,
-                        height: maxWidth * 0.45,
-                        child: Container(
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(30),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Color.fromARGB(97, 40, 40, 40),
-                                blurRadius: 20,
-                                spreadRadius: 2,
-                                offset: Offset(0, 10),
-                              ),
-                              BoxShadow(
-                                color: Color.fromARGB(80, 100, 200, 150),
-                                blurRadius: 20,
-                                spreadRadius: 2,
-                                offset: Offset(0, 15),
-                              ),
-                            ],
-                          ),
-                          child: Ink(
-                            decoration: BoxDecoration(
-                              image: DecorationImage(
-                                image: AssetImage('assets/images/green_background.jpg'),
-                                fit: BoxFit.cover,
-                              ),
-                              borderRadius: BorderRadius.circular(30),
-                            ),
-                            child: ElevatedButton(
-                              onPressed: null,
-                              style: ElevatedButton.styleFrom(
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(30),
-                                ),
-                                elevation: 0,
-                              ), 
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(FontAwesomeIcons.heartPulse, color: const Color.fromARGB(255, 255, 255, 255), size: maxWidth * 0.15), 
-                                  Padding(padding:  EdgeInsets.only(bottom: maxWidth * 0.02)), 
-                                  Text('Good', style: TextStyle(fontSize: maxWidth * 0.1, color: const Color.fromARGB(255, 255, 255, 255), fontWeight: FontWeight.bold)),
-                                ],
-                              )
-                            ),
-                          ),
-                        ),
-                      ),
-                    ]
-                ),
-              ),
-              SizedBox(
-                height: 20,
-              ),
-              SizedBox(
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [ 
-                      SizedBox(
-                        width: maxWidth * 0.45,
-                        height: maxWidth * 0.45,
-                        child: Container(
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(30),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Color.fromARGB(100, 0, 0, 0),
-                                blurRadius: 20,
-                                spreadRadius: 2,
-                                offset: Offset(0, 10),
-                              ),
-                              BoxShadow(
-                                color: Color.fromARGB(80, 150, 100, 200),
-                                blurRadius: 15,
-                                spreadRadius: 1,
-                                offset: Offset(0, 5),
-                              ),
-                            ],
-                          ),
-                          child: Ink(
-                            decoration: BoxDecoration(
-                              image: DecorationImage(
-                                image: AssetImage('assets/images/purple_background.jpg'),
-                                fit: BoxFit.cover,
-                              ),
-                              borderRadius: BorderRadius.circular(30),
-                            ),
-                            child: ElevatedButton(
-                              onPressed: null,
-                              style: ElevatedButton.styleFrom(
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(30),
-                                ),
-                                elevation: 0,
-                                shadowColor: Colors.transparent,
-                                backgroundColor: Colors.transparent,
-                              ), 
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(FontAwesomeIcons.sadTear, color: const Color.fromARGB(255, 255, 255, 255), size: maxWidth * 0.15), 
-                                  Padding(padding:  EdgeInsets.only(bottom: maxWidth * 0.02)), 
-                                  Text('Sad', style: TextStyle(fontSize: maxWidth * 0.1, color: const Color.fromARGB(255, 255, 255, 255), fontWeight: FontWeight.bold)),
-                                ],
-                              )
-                            ),
-                          ),
-                        ),
-                      ),
-                      SizedBox(
-                        width: 40,
-                      ),
-                      SizedBox(
-                        width: maxWidth * 0.45,
-                        height: maxWidth * 0.45,
-                        child: Container(
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(30),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Color.fromARGB(100, 0, 0, 0),
-                                blurRadius: 20,
-                                spreadRadius: 2,
-                                offset: Offset(0, 10),
-                              ),
-                              BoxShadow(
-                                color: Color.fromARGB(80, 200, 180, 100),
-                                blurRadius: 15,
-                                spreadRadius: 1,
-                                offset: Offset(0, 5),
-                              ),
-                            ],
-                          ),
-                          child: Ink(
-                            decoration: BoxDecoration(
-                              image: DecorationImage(
-                                image: AssetImage('assets/images/gold_background.jpg'),
-                                fit: BoxFit.cover,
-                              ),
-                              borderRadius: BorderRadius.circular(30),
-                            ),
-                            child: ElevatedButton(
-                              onPressed: null,
-                              style: ElevatedButton.styleFrom(
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(30),
-                                ),
-                                elevation: 0,
-                                shadowColor: Colors.transparent,
-                                backgroundColor: Colors.transparent,
-                              ), 
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(FontAwesomeIcons.moneyBills, color: const Color.fromARGB(255, 255, 255, 255), size: maxWidth * 0.15), 
-                                  Padding(padding:  EdgeInsets.only(bottom: maxWidth * 0.02)), 
-                                  Text('Wealth', style: TextStyle(fontSize: maxWidth * 0.09, color: const Color.fromARGB(255, 255, 255, 255), fontWeight: FontWeight.bold)),
-                                ],
-                              )
-                            ),
-                          ),
-                        ),
-                      ),
-                    ]
+      body: Column(
+        mainAxisAlignment: MainAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Align(
+                alignment: Alignment.centerLeft,
+                child: Padding(
+                  padding: const EdgeInsets.only(left: 20.0, top: 50),
+                  child: Text(
+                    "Hello ${FirebaseAuth.instance.currentUser?.displayName ?? 'User'}!",
+                    style: TextStyle(
+                      fontSize: 30,
+                      fontWeight: FontWeight.bold,
+                      fontFamily: 'Lobstertwo',
+                    ),
                   ),
                 ),
-                ],
               ),
-            ),
-          );
-        }
+              Spacer(),
+              Padding(
+                padding: const EdgeInsets.only(right: 15.0, top: 40),
+                child: streakContainer(90, int.parse(streak)),
+              ),
+              SizedBox(
+                width: 1,
+              )
+            ],
+          ),
+          SizedBox(
+            height: 10,
+          ),
+          Divider(
+            height: 0.1,
+            color: Colors.grey,
+            thickness: 2,
+            indent: 20,
+            endIndent: 20,
+          ),
+          Expanded(
+            child: SingleChildScrollView(
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  double maxWidth = constraints.maxWidth * 0.8;
+                  return Center(
+                    child: Column(
+                      children: [
+                        SizedBox(
+                          height: 5,
+                        ),
+                        new_diary_button(context, width: maxWidth),
+                        SizedBox(
+                          height: 30,
+                        ),
+                        if (createdNewDiaryToday) 
+                          edit_diary_button(context, width: maxWidth)
+                        else
+                          Text(
+                            "You haven't created a diary today. Let's write one!",
+                        style: TextStyle(fontSize: 16, color: Colors.red),
+                      ),
+                    SizedBox(
+                      height: 20,
+                    ),
+                    Text(
+                      "Moods",
+                      style: TextStyle(
+                        fontSize: 30,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    SizedBox(
+                      height: 20,
+                    ),
+                    SizedBox(
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [ 
+                          SizedBox(
+                            width: 40,
+                          ),
+                          // button for health
+                          SizedBox(
+                            width: maxWidth * 0.45,
+                            height: maxWidth * 0.45,
+                            child: Container(
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(30),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Color.fromARGB(100, 0, 0, 0),
+                                    blurRadius: 20,
+                                    spreadRadius: 2,
+                                    offset: Offset(0, 10),
+                                  ),
+                                  BoxShadow(
+                                    color: Color.fromARGB(80, 150, 100, 200),
+                                    blurRadius: 15,
+                                    spreadRadius: 1,
+                                    offset: Offset(0, 5),
+                                  ),
+                                ],
+                              ),
+                              child: Ink(
+                                decoration: BoxDecoration(
+                                  color: Color.fromARGB(255, 38, 255, 0),
+                                  borderRadius: BorderRadius.circular(30),
+                                ),
+                                child: ElevatedButton(
+                                  onPressed: null,
+                                  style: ElevatedButton.styleFrom(
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(30),
+                                    ),
+                                    elevation: 0,
+                                  ), 
+                                  child: Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(FontAwesomeIcons.heartPulse, color: const Color.fromARGB(255, 255, 255, 255), size: maxWidth * 0.15), 
+                                      Padding(padding:  EdgeInsets.only(bottom: maxWidth * 0.02)), 
+                                      Text('Good', style: TextStyle(fontSize: maxWidth * 0.1, color: const Color.fromARGB(255, 255, 255, 255), fontWeight: FontWeight.bold)),
+                                    ],
+                                  )
+                                ),
+                              ),
+                            ),
+                          ),
+                        ]
+                      ),
+                    ),
+                    SizedBox(
+                      height: 20,
+                    ),
+                    // button for emotion
+                    SizedBox(
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [ 
+                            SizedBox(
+                              width: maxWidth * 0.45,
+                              height: maxWidth * 0.45,
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(30),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Color.fromARGB(100, 0, 0, 0),
+                                      blurRadius: 20,
+                                      spreadRadius: 2,
+                                      offset: Offset(0, 10),
+                                    ),
+                                    BoxShadow(
+                                      color: Color.fromARGB(80, 150, 100, 200),
+                                      blurRadius: 15,
+                                      spreadRadius: 1,
+                                      offset: Offset(0, 5),
+                                    ),
+                                  ],
+                                ),
+                                child: Ink(
+                                  decoration: BoxDecoration(
+                                    image: DecorationImage(
+                                      image: AssetImage('assets/images/purple_background.jpg'),
+                                      fit: BoxFit.cover,
+                                    ),
+                                    borderRadius: BorderRadius.circular(30),
+                                  ),
+                                  child: ElevatedButton(
+                                    onPressed: null,
+                                    style: ElevatedButton.styleFrom(
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(30),
+                                      ),
+                                      elevation: 0,
+                                      shadowColor: Colors.transparent,
+                                      backgroundColor: Colors.transparent,
+                                    ), 
+                                    child: Column(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      children: [
+                                        Icon(FontAwesomeIcons.sadTear, color: const Color.fromARGB(255, 255, 255, 255), size: maxWidth * 0.15), 
+                                        Padding(padding:  EdgeInsets.only(bottom: maxWidth * 0.02)), 
+                                        Text('Sad', style: TextStyle(fontSize: maxWidth * 0.1, color: const Color.fromARGB(255, 255, 255, 255), fontWeight: FontWeight.bold)),
+                                      ],
+                                    )
+                                  ),
+                                ),
+                              ),
+                            ),
+                            SizedBox(
+                              width: 40,
+                            ),
+                            // button for wealth
+                            SizedBox(
+                              width: maxWidth * 0.45,
+                              height: maxWidth * 0.45,
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(30),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Color.fromARGB(100, 0, 0, 0),
+                                      blurRadius: 20,
+                                      spreadRadius: 2,
+                                      offset: Offset(0, 10),
+                                    ),
+                                    BoxShadow(
+                                      color: Color.fromARGB(80, 200, 180, 100),
+                                      blurRadius: 15,
+                                      spreadRadius: 1,
+                                      offset: Offset(0, 5),
+                                    ),
+                                  ],
+                                ),
+                                child: Ink(
+                                  decoration: BoxDecoration(
+                                    image: DecorationImage(
+                                      image: AssetImage('assets/images/gold_background.jpg'),
+                                      fit: BoxFit.cover,
+                                    ),
+                                    borderRadius: BorderRadius.circular(30),
+                                  ),
+                                  child: ElevatedButton(
+                                    onPressed: null,
+                                    style: ElevatedButton.styleFrom(
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(30),
+                                      ),
+                                      elevation: 0,
+                                      shadowColor: Colors.transparent,
+                                      backgroundColor: Colors.transparent,
+                                    ), 
+                                    child: Column(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      children: [
+                                        Icon(FontAwesomeIcons.moneyBills, color: const Color.fromARGB(255, 255, 255, 255), size: maxWidth * 0.15), 
+                                        Padding(padding:  EdgeInsets.only(bottom: maxWidth * 0.02)), 
+                                        Text('Wealth', style: TextStyle(fontSize: maxWidth * 0.09, color: const Color.fromARGB(255, 255, 255, 255), fontWeight: FontWeight.bold)),
+                                      ],
+                                    )
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ]
+                        ),
+                      ),
+                      SizedBox(
+                        height: 150,
+                      ),
+                    ],
+                  ),
+                );
+              }
+              ),
+            )
+          )
+        ],
       ),
+    );
+  }
+
+  Container streakContainer(double width, int streak) {
+    return Container(
+      decoration: BoxDecoration(
+        border: Border.all(color: const Color.fromARGB(255, 250, 160, 160), width: 3),
+        borderRadius: BorderRadius.circular(10)
+      ),
+      padding: EdgeInsets.all(8),
+      width: width,
+      height: 60,
+      child:Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Icon(Icons.local_fire_department_rounded, color: const Color.fromARGB(255, 237, 84, 84), size: 40),
+          Text(streak.toString(), style: TextStyle(fontSize: 30, color: const Color.fromARGB(255, 0, 0, 0), fontWeight: FontWeight.bold)),
+        ],
+      )
     );
   }
 
