@@ -131,6 +131,51 @@ class _HomepageState extends State<Homepage> with RouteAware{
     "Terrible",
   ];
 
+  List<Color> healthColors = [
+  Colors.green,              // Healthy
+  Colors.purpleAccent,       // Infected (Virus color)
+  Colors.deepOrange,         // Feverish (Hot)
+  Colors.cyan,               // Chills (Cold)
+  Colors.red,                // Painful
+  Colors.brown.shade300,     // Fatigued
+  Colors.blueGrey,           // Dizzy
+  Colors.indigo,             // Depressed (Health context)
+  Colors.lime.shade800,      // Nauseous (Sickly green)
+  Colors.teal,               // Active
+  Colors.blueGrey.shade200,  // Bedridden
+  Colors.amber,              // Energetic
+  Colors.amber.shade100,     // Weak
+  Colors.grey,               // Immobile
+  Colors.pinkAccent.shade100,// Pregnant
+  Colors.brown.shade100,     // Frail
+  Colors.lightBlue.shade100, // Hospitalized (Sterile blue)
+  Colors.lightBlue,          // Hygienic
+  Colors.orange.shade800,    // Overweight
+  Colors.red.shade900,       // Critical
+];
+  List<Color> emotionColors = [
+  Colors.yellow.shade700,    // Happy
+  Colors.orangeAccent,       // Overjoyed
+  Colors.pink,               // Loved
+  Colors.grey.shade400,      // Neutral
+  Colors.blue,               // Sad
+  Colors.blueGrey.shade900,  // Depressed
+  Colors.redAccent,          // Angry
+  Colors.red.shade900,       // Furious
+  Colors.deepOrangeAccent,   // Annoyed
+  Colors.brown.shade200,     // Exhausted
+  Colors.deepOrange.shade100,// Embarrassed (Blush)
+  Colors.purpleAccent,       // Shocked
+  Colors.lime,               // Awkward
+  Colors.tealAccent,         // Confused
+  Colors.deepPurple,         // Scared
+  Colors.amber.shade900,     // Stressed
+  Colors.pink.shade900,      // Heartbroken
+  Colors.blueGrey,           // Gloomy
+  Colors.cyanAccent,         // Chill
+  Colors.brown,              // Terrible
+];
+
   @override
   void initState() {
     super.initState();
@@ -300,7 +345,19 @@ class _HomepageState extends State<Homepage> with RouteAware{
                         SizedBox(
                           height: 20,
                         ),
-                        moodBlocks(maxWidth, createdNewDiaryToday),
+                        Text(
+                          "Today's Mood",
+                          style: TextStyle(
+                            fontSize: 30,
+                            fontWeight: FontWeight.bold,
+                            fontFamily: 'Lobstertwo',
+                          ),
+                        ),
+                        SizedBox(
+                          height: 20,
+                        ),
+                        if (createdNewDiaryToday)
+                          moodBlocks(maxWidth, createdNewDiaryToday),
                       ],
                     ),
                   );
@@ -334,16 +391,6 @@ class _HomepageState extends State<Homepage> with RouteAware{
   Column moodBlocks(double maxWidth, bool createdNewDiaryToday) {
     return Column(
       children:[
-        Text(
-          "Moods",
-          style: TextStyle(
-            fontSize: 30,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        SizedBox(
-          height: 20,
-        ),
         SizedBox(
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -372,7 +419,7 @@ class _HomepageState extends State<Homepage> with RouteAware{
                   ),
                   child: Ink(
                     decoration: BoxDecoration(
-                      color: createdNewDiaryToday ? Color.fromARGB(255, 38, 255, 0) : Color.fromARGB(255, 100, 100, 100),
+                      color: createdNewDiaryToday ? healthColors[status[0]] : Color.fromARGB(255, 100, 100, 100),
                       borderRadius: BorderRadius.circular(30),
                     ),
                     child: ElevatedButton(
@@ -421,10 +468,7 @@ class _HomepageState extends State<Homepage> with RouteAware{
                   ),
                   child: Ink(
                     decoration: BoxDecoration(
-                      image: DecorationImage(
-                        image: AssetImage('assets/images/purple_background.jpg'),
-                        fit: BoxFit.cover,
-                      ),
+                      color: createdNewDiaryToday ? emotionColors[status[1]] : Color.fromARGB(255, 100, 100, 100),
                       borderRadius: BorderRadius.circular(30),
                     ),
                     child: ElevatedButton(
