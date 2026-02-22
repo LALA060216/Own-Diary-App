@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:google_generative_ai/google_generative_ai.dart';
 import 'dart:convert';
 import '../services/gemini_service.dart';
@@ -199,7 +200,7 @@ class _ASummaryPageState extends State<AISummaryPage> {
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
                       color: isUser ? Colors.blue.shade100: null,
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(20),
                     ),
                     child: Text(msg.text),
                   )
@@ -209,10 +210,11 @@ class _ASummaryPageState extends State<AISummaryPage> {
           ),
           SafeArea(
             child: Container(
+              width: MediaQuery.of(context).size.width * 0.95,
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
               decoration: BoxDecoration(
                 color: Colors.grey.shade200,
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(25),
                 border: Border.all(color: Colors.grey.shade400)
               ),
               child: Row(
@@ -244,7 +246,8 @@ class _ASummaryPageState extends State<AISummaryPage> {
                   ]
                 )
               )
-            )
+            ),
+            SizedBox(height: 10)
         ]
     )
   );
