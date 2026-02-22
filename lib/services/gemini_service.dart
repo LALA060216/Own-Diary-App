@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:google_generative_ai/google_generative_ai.dart';
 import 'models/ai_chat_model.dart';
 

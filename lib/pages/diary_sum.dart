@@ -491,7 +491,7 @@ class _DiariesState extends State<Diaries> {
 
   final FirestoreService firestoreService = FirestoreService();
   final GenerativeModel _visionModel = GenerativeModel(
-    model: 'gemini-1.5-flash',
+    model: 'gemini-2.5-flash',
     apiKey: 'AIzaSyB7fyWwmbbFQEV_0IYTXBV6EZ0uUsELFj8',
     generationConfig: GenerationConfig(temperature: 0.2, topP: 0.8),
   );
@@ -735,7 +735,8 @@ class _DiariesState extends State<Diaries> {
         'self_growth (for personal development), '
         'moments (only if image does not match any category). '
         'Be confident - if you see food in the image, return food_buddy. '
-        'Output only the category key, no explanation.',
+        'Output only the category key, no explanation.'
+        'if image cannot be processed, return HelloWorld',
       ),
     ];
 
@@ -746,6 +747,7 @@ class _DiariesState extends State<Diaries> {
     
     for (final imageUrl in imageUrls) {
       final compressedBytes = await _downloadAndDownscaleForGemini(imageUrl);
+      print('Compressed bytes for image $imageUrl: ${compressedBytes?.length ?? 0}');
       if (compressedBytes != null) {
         parts.add(DataPart('image/jpeg', compressedBytes));
         break; // Only use first successfully downloaded image
@@ -757,7 +759,12 @@ class _DiariesState extends State<Diaries> {
     final response = await _visionModel.generateContent([
       Content.multi(parts),
     ]);
-    return _extractCategoryFromAiResponse(response.text ?? '');
+    final rawText = response.text ?? '';
+    if (rawText.trim().isEmpty) {
+      print('AI classification empty response for diary ${diary.id}');
+    }
+    print('AI classification for diary ${diary.id}: $rawText');
+    return _extractCategoryFromAiResponse(rawText);
   }
 
   Future<String> _classifyMomentWithAi(DiaryEntryModel diary) async {
