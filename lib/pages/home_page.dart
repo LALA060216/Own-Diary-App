@@ -4,38 +4,44 @@ import 'package:diaryapp/main.dart';
 import 'package:diaryapp/services/firestore_service.dart';
 import 'package:diaryapp/services/gemini_service.dart';
 import 'package:diaryapp/services/models/ai_chat_model.dart';
-import 'package:diaryapp/services/models/diary_entry_model.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/rendering.dart';
+
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'newdiary_page.dart';
 
 bool createdNewDiaryToday = false;
-String streak = '';
-List<int> status = [0,0];
-String oldDiaryContext = '';
 bool updatedDiary = true;
-Map<String, int> attentionData = {};
+bool hasLoadedInitial = false;
+String streak = '';
+String oldDiaryContext = '';
+int analyseIndex = 0;
+List<List<int>> status = [[0,0], [0,0]]; 
+List<Map<String, int>> attentionData = [{},{}];
 
 class Homepage extends StatefulWidget {
   const Homepage({super.key});
-  
 
   @override
   State<Homepage> createState() => _HomepageState();
 }
 
 class _HomepageState extends State<Homepage> with RouteAware{
-  FirestoreService firestoreService = FirestoreService();
-  String userId = FirebaseAuth.instance.currentUser!.uid;
-  TextEditingController _previousDiaryController = TextEditingController();
+  late final FirestoreService firestoreService = FirestoreService();
+  late final String userId = FirebaseAuth.instance.currentUser!.uid;
   List<String> imageUrls = [];
   String? diaryId = '';
   bool isLoading = false;
   bool isloadingAttention = false;
+
+  static const _moodTitleStyle = TextStyle(
+    fontSize: 30,
+    fontWeight: FontWeight.bold,
+    fontFamily: 'Lobstertwo',
+    color: Colors.black87,
+  );
 
   String promptForMood = 'You are a sentiment analyzer. Analyze the diary entry and select the best matching index (0-19) from the two lists below.\nHealth Statuses (0-19):\n["Healthy", "Infected", "Feverish", "Chills", "Painful", "Fatigued", "Dizzy", "Depressed", "Nauseous", "Active", "Bedridden", "Energetic", "Weak", "Immobile", "Pregnant", "Frail", "Hospitalized", "Hygienic", "Overweight", "Critical"]\nEmotion Statuses (0-19):\n["Happy", "Overjoyed", "Loved", "Neutral", "Sad", "Depressed", "Angry", "Furious", "Annoyed", "Exhausted", "Embarrassed", "Shocked", "Awkward", "Confused", "Scared", "Stressed", "Heartbroken", "Gloomy", "Chill", "Terrible"]\nReturn ONLY two numbers separated by a space.\n!!Important!! Follow these two Rules: 1) If the diary entry describes emotions but DOES NOT mention physical symptoms or health, default the health_index to 0. 2) Do not include any other text, explanations, or formatting. Just the two numbers. Example: 5 10. Bad response: 08 06';
   String promptForAnalyse = '''Analyze this diary entry and identify what the user is paying ATTENTION to - the main TOPICS, SUBJECTS, or FOCUS AREAS mentioned.
@@ -54,8 +60,9 @@ EXAMPLES:
 
 Return ONLY a JSON object with no other text:''';
   
-  late AIChatModel _chatModel = AIChatModel(prompt: promptForMood, model: 'gemma-3-27b-it');
-  late AIChatModel _analyseChatModel = AIChatModel(prompt: promptForAnalyse, model: 'gemma-3-27b-it');
+  TextEditingController _previousDiaryController = TextEditingController();
+  late final AIChatModel _chatModel = AIChatModel(prompt: promptForMood, model: 'gemma-3-12b-it');
+  late final AIChatModel _analyseChatModel = AIChatModel(prompt: promptForAnalyse, model: 'gemma-3-12b-it');
   String previousTitle = '';
 
   List<dynamic> healthIcons = [
@@ -196,12 +203,24 @@ Return ONLY a JSON object with no other text:''';
   void initState() {
     super.initState();
     _checkIfCreatedNewDiaryToday();
+    if (!hasLoadedInitial) {
+      hasLoadedInitial = true;
+      _getDiaryContext(1).then((context) {
+        if (mounted) {
+          _refreshMood(context, index: 1);
+          _refreshAttention(context, index: 1);
+        }
+      });
+    }
     _didUpdatedDiary().then((updated) {
-      if (updated) {
-        String context = oldDiaryContext;
-        _refreshMood(context);
-        _refreshAttention(context);
-      }
+        if (updated) {
+          _getDiaryContext(0).then((context) {
+            if (mounted) {
+              _refreshMood(context);
+              _refreshAttention(context);
+            }
+          });
+        }
     });
     _getStreak();
   }
@@ -217,9 +236,10 @@ Return ONLY a JSON object with no other text:''';
     _checkIfCreatedNewDiaryToday();
     _didUpdatedDiary().then((updated) {
       if (updated) {
-        String context = oldDiaryContext;
-        _refreshMood(context);
-        _refreshAttention(context);
+        _getDiaryContext(0).then((context) {
+          _refreshMood(context);
+          _refreshAttention(context);
+        });
       }
     });
     _getStreak();
@@ -245,6 +265,14 @@ Return ONLY a JSON object with no other text:''';
     });
   }
 
+  Future<String> _getDiaryContext(int index) async {
+    if (index == 0) {
+      return oldDiaryContext;
+    } else if (index == 1) {
+      return await firestoreService.getUserDiaryContextPastWeek(userId);
+    } return '';
+  }
+
   Future<void> _getStreak() async {
     final value = await firestoreService.getUserStreak(userId);
     if (!mounted) return;
@@ -265,31 +293,45 @@ Return ONLY a JSON object with no other text:''';
     return false;
   }
 
-  Future<void> _refreshMood(String context) async {
+  Future<void> _refreshMood(String context, {int? index}) async {
+    final analyseIndexMood = index ?? analyseIndex;
     isLoading = true;
     await GeminiService(chatModel: _chatModel).getMoodAnalysis(context).then((value) {
       try {
-        final numbers = RegExp(r'\d+').allMatches(value)
-            .map((m) => int.parse(m.group(0)!))
-            .toList();
-        
-        if (numbers.length >= 2) {
+        final match = RegExp(r'^\s*(\d+)\s+(\d+)\s*$').firstMatch(value);
+
+        if (match == null) {
+          if (!mounted) return;
           setState(() {
             isLoading = false;
-            status = [numbers[0], numbers[1]];
+            status[analyseIndexMood] = [0, 0];
           });
+          return;
         }
+
+        final healthIndex = int.parse(match.group(1)!)
+            .clamp(0, healthStatuses.length - 1);
+        final emotionIndex = int.parse(match.group(2)!)
+            .clamp(0, emotionStatus.length - 1);
+
+        if (!mounted) return;
+        setState(() {
+          isLoading = false;
+          status[analyseIndexMood] = [healthIndex, emotionIndex];
+        });
       } catch (e) {
         if (!mounted) return;
         setState(() {
-          status = [0, 0];
+          isLoading = false;
+          status[analyseIndexMood] = [0, 0];
         });
       }
     });
   }
 
-  Future<void> _refreshAttention(String context) async {
+  Future<void> _refreshAttention(String context, {int? index}) async {
     isloadingAttention = true;
+    final analyseIndexAttention = index ?? analyseIndex;
     
     await GeminiService(chatModel: _analyseChatModel).getAttentionAnalysis(context).then((value) {
       try {
@@ -301,7 +343,6 @@ Return ONLY a JSON object with no other text:''';
               .replaceAll(RegExp(r'```\s*'), '')
               .trim();
         }
-        // Try to parse as JSON
         try {
           final Map<String, dynamic> jsonData = jsonDecode(cleanedValue);
           jsonData.forEach((key, value) {
@@ -320,11 +361,10 @@ Return ONLY a JSON object with no other text:''';
             }
           }
         }
-
-
+        if (!mounted) return;
         setState(() {
           isloadingAttention = false;
-          attentionData = parsedData;
+          attentionData[analyseIndexAttention] = parsedData;
         });
 
       } catch (e) {
@@ -333,7 +373,7 @@ Return ONLY a JSON object with no other text:''';
         if (!mounted) return;
         setState(() {
           isloadingAttention = false;
-          attentionData = {};
+          attentionData[analyseIndexAttention] = {};
         });
       }
     });
@@ -342,9 +382,6 @@ Return ONLY a JSON object with no other text:''';
 
   @override
   Widget build(BuildContext context) {
-    setState(() {
-      createdNewDiaryToday = createdNewDiaryToday;
-    });
     return Scaffold(
       backgroundColor: Color(0xfff5f5f5),
       body: Column(
@@ -418,43 +455,60 @@ Return ONLY a JSON object with no other text:''';
                         SizedBox(
                           height: 20,
                         ),
-                        if (createdNewDiaryToday)
-                          Container(
-                            margin: EdgeInsets.symmetric(horizontal: 10, vertical: 15),
-                            padding: EdgeInsets.all(25),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(20),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withOpacity(0.2),
-                                  blurRadius: 15,
-                                  spreadRadius: 2,
-                                  offset: Offset(0, 5),
-                                ),
-                              ],
-                            ),
-                            child: Column(
-                              children: [
-                                Text(
-                                  "Mood",
-                                  style: TextStyle(
-                                    fontSize: 30,
-                                    fontWeight: FontWeight.bold,
-                                    fontFamily: 'Lobstertwo',
-                                    color: Colors.black87,
-                                  ),
-                                ),
-                                SizedBox(height: 20),
-                                moodBlocks(maxWidth, createdNewDiaryToday),
-                                SizedBox(height: 20),
-                                if (isloadingAttention)
-                                  CircularProgressIndicator()
-                                else if (attentionData.isNotEmpty)
-                                  _buildAttentionChart(),
-                              ],
-                            ),
+                        Container(
+                          width: constraints.maxWidth * 0.9,
+                          margin: EdgeInsets.symmetric(horizontal: 10, vertical: 15),
+                          padding: EdgeInsets.all(25),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(20),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.2),
+                                blurRadius: 15,
+                                spreadRadius: 2,
+                                offset: Offset(0, 5),
+                              ),
+                            ],
                           ),
+                          child: Column(
+                            children: [
+                              Stack(
+                                children: [
+                                  Center(
+                                    child: const Text(
+                                      "Mood",
+                                      style: _moodTitleStyle,
+                                    ),
+                                  ),
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.end, 
+                                    children: [
+                                      _rangeButton(
+                                        "1D",
+                                        isSelected: analyseIndex == 0,
+                                        onPressed: () => {setState(() => analyseIndex = 0)},
+                                      ),
+                                      SizedBox(width: 4),
+                                      _rangeButton(
+                                        "1W",
+                                        isSelected: analyseIndex == 1,
+                                        onPressed: () => {setState(() => analyseIndex = 1)},
+                                      ),
+                                    ]
+                                  ),
+                                ]
+                              ),
+                              SizedBox(height: 20),
+                              moodBlocks(maxWidth, createdNewDiaryToday),
+                              SizedBox(height: 20),
+                              if (isloadingAttention)
+                                CircularProgressIndicator()
+                              else if (attentionData.isNotEmpty)
+                                _buildAttentionChart(),
+                            ],
+                          ),
+                        ),
                         SizedBox(
                           height: 20,
                         ),
@@ -476,12 +530,12 @@ Return ONLY a JSON object with no other text:''';
         border: Border.all(color: const Color.fromARGB(255, 250, 160, 160), width: 3),
         borderRadius: BorderRadius.circular(25)
       ),
-      padding: EdgeInsets.all(8),
-      child:Row(
+      padding: const EdgeInsets.all(8),
+      child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Icon(Icons.local_fire_department_rounded, color: const Color.fromARGB(255, 237, 84, 84), size: 40),
-          Text(streak.toString(), style: TextStyle(fontSize: 30, color: const Color.fromARGB(255, 0, 0, 0), fontWeight: FontWeight.bold)),
+          const Icon(Icons.local_fire_department_rounded, color: Color.fromARGB(255, 237, 84, 84), size: 40),
+          Text(streak.toString(), style: const TextStyle(fontSize: 30, color: Color.fromARGB(255, 0, 0, 0), fontWeight: FontWeight.bold)),
         ],
       )
     );
@@ -500,7 +554,7 @@ Return ONLY a JSON object with no other text:''';
                 height: maxWidth * 0.45,
                 child: Container(
                   decoration: BoxDecoration(
-                    color: createdNewDiaryToday ? healthColors[status[0]] : Color.fromARGB(255, 100, 100, 100),
+                    color: !createdNewDiaryToday && analyseIndex == 0 ? Color.fromARGB(255, 100, 100, 100): healthColors[status[analyseIndex][0]] ,
                     borderRadius: BorderRadius.circular(30),
                   ),
                   child: Material(
@@ -514,9 +568,9 @@ Return ONLY a JSON object with no other text:''';
                         child: isLoading ? Center(child: CircularProgressIndicator(color: Colors.white)) : Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            FaIcon(healthIcons[status[0]], color: const Color.fromARGB(255, 255, 255, 255), size: maxWidth * 0.15), 
+                            FaIcon(healthIcons[status[analyseIndex][0]], color: const Color.fromARGB(255, 255, 255, 255), size: maxWidth * 0.15), 
                             Padding(padding:  EdgeInsets.only(bottom: maxWidth * 0.02)), 
-                            Text(healthStatuses[status[0]], style: TextStyle(fontSize: maxWidth * 0.06, color: const Color.fromARGB(255, 255, 255, 255), fontWeight: FontWeight.bold)),
+                            Text(healthStatuses[status[analyseIndex][0]], style: TextStyle(fontSize: maxWidth * 0.06, color: const Color.fromARGB(255, 255, 255, 255), fontWeight: FontWeight.bold)),
                           ],
                         ),
                       ),
@@ -532,7 +586,7 @@ Return ONLY a JSON object with no other text:''';
                 height: maxWidth * 0.45,
                 child: Container(
                   decoration: BoxDecoration(
-                    color: createdNewDiaryToday ? emotionColors[status[1]] : Color.fromARGB(255, 100, 100, 100),
+                    color: !createdNewDiaryToday && analyseIndex == 0 ?Color.fromARGB(255, 100, 100, 100): emotionColors[status[analyseIndex][1]] ,
                     borderRadius: BorderRadius.circular(30),
                   ),
                   child: Material(
@@ -546,9 +600,9 @@ Return ONLY a JSON object with no other text:''';
                         child: isLoading ? Center(child: CircularProgressIndicator(color: Colors.white)) : Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            FaIcon(emotionIcons[status[1]], color: const Color.fromARGB(255, 255, 255, 255), size: maxWidth * 0.15), 
+                            FaIcon(emotionIcons[status[analyseIndex][1]], color: const Color.fromARGB(255, 255, 255, 255), size: maxWidth * 0.15), 
                             Padding(padding:  EdgeInsets.only(bottom: maxWidth * 0.02)), 
-                            Text(emotionStatus[status[1]], style: TextStyle(fontSize: maxWidth * 0.05, color: const Color.fromARGB(255, 255, 255, 255), fontWeight: FontWeight.bold)),
+                            Text(emotionStatus[status[analyseIndex][1]], style: TextStyle(fontSize: maxWidth * 0.05, color: const Color.fromARGB(255, 255, 255, 255), fontWeight: FontWeight.bold)),
                           ],
                         ),
                       ),
@@ -563,8 +617,38 @@ Return ONLY a JSON object with no other text:''';
     );
   }
 
+  Widget _rangeButton(
+    String label, {
+    required bool isSelected,
+    required VoidCallback onPressed,
+  }) {
+    return SizedBox(
+      height: 40,
+      width: 35,
+      child: ElevatedButton(
+        onPressed: onPressed,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: isSelected
+              ? const Color.fromARGB(255, 0, 0, 0)
+              : const Color.fromARGB(255, 233, 233, 233),
+          padding: EdgeInsets.zero,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 12,
+            color: isSelected ? Colors.white : Colors.black,
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildAttentionChart(){
-    if (attentionData.isEmpty) {
+    if (attentionData.length <= analyseIndex || attentionData[analyseIndex].isEmpty) {
       return SizedBox.shrink();
     }
     
@@ -581,24 +665,42 @@ Return ONLY a JSON object with no other text:''';
     ];
 
     int colorIndex = 0;
+    List<PieChartSectionData> sections = [];
+    List<MapEntry<String, int>> sortedAttentionData = {'No Data': 100}.entries.toList();
     // sort attentionData by value in descending order 
-    var sortedAttentionData = attentionData.entries.toList()
-      ..sort((a, b) => b.value.compareTo(a.value));
-    List<PieChartSectionData> sections = sortedAttentionData.map((entry) {
-      final section = PieChartSectionData(
-        value: entry.value.toDouble(),
-        color: chartColors[colorIndex % chartColors.length],
-        radius: 80,
-        title: '${entry.value}%',
-        titleStyle: TextStyle(
-          fontSize: 14,
-          fontWeight: FontWeight.bold,
-          color: Colors.white,
+    if (!createdNewDiaryToday && analyseIndex == 0) {
+      sections = [
+        PieChartSectionData(
+          value: 100,
+          color: Colors.grey.shade300,
+          radius: 80,
+          title: '',
+          titleStyle: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.bold,
+            color: Colors.black45,
+          )
         )
-      );
-      colorIndex++;
-      return section;
-    }).toList();
+      ];
+    } else {
+      sortedAttentionData = attentionData[analyseIndex].entries.toList()
+        ..sort((a, b) => b.value.compareTo(a.value));
+      sections = sortedAttentionData.map((entry) {
+        final section = PieChartSectionData(
+          value: entry.value.toDouble(),
+          color: chartColors[colorIndex % chartColors.length],
+          radius: 80,
+          title: '${entry.value}%',
+          titleStyle: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+          )
+        );
+        colorIndex++;
+        return section;
+      }).toList();
+    }
 
     return Container(
       margin: EdgeInsets.symmetric(horizontal: 10, vertical: 15),
@@ -657,7 +759,7 @@ Return ONLY a JSON object with no other text:''';
                         width: 18,
                         height: 18,
                         decoration: BoxDecoration(
-                          color: color,
+                          color: data.key != 'No Data' ? color : Colors.grey.shade300,
                           borderRadius: BorderRadius.circular(4),
                           boxShadow: [
                             BoxShadow(

@@ -254,33 +254,38 @@ class FirestoreService {
     }
   }
 
-  /// Get all diary entries for a user
-  Future<List<DiaryEntryModel>> getUserDiaryEntries(String userId) async {
-    try {
-      final snapshot = await diaryEntriesCollection
-          .where('userId', isEqualTo: userId)
-          .orderBy('created', descending: true)
-          .get();
-      return snapshot.docs
-          .map((doc) => DiaryEntryModel.fromFirestore(doc))
-          .toList();
-    } catch (e) {
-      rethrow;
-    }
-  }
-
   // Get all diary entries in the past week
-  Future<List<DiaryEntryModel>> getUserDiaryEntriesPastWeek(String userId) async {
-    try{
+  Future<String> getUserDiaryContextPastWeek(String userId) async {
+    try {
       final oneWeekAgo = DateTime.now().subtract(Duration(days: 7));
       final snapshot = await diaryEntriesCollection
         .where('userId', isEqualTo: userId)
         .where('created', isGreaterThanOrEqualTo: Timestamp.fromDate(oneWeekAgo))
         .orderBy('created', descending: true)
         .get();
+
       return snapshot.docs
-          .map((doc) => DiaryEntryModel.fromFirestore(doc))
-          .toList();
+        .map((doc) => DiaryEntryModel.fromFirestore(doc).context)
+        .toList()
+        .join('\n');
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  Future<String> getUserDiaryContextPastMonth(String userId) async {
+    try {
+      final oneMonthAgo = DateTime.now().subtract(Duration(days: 30));
+      final snapshot = await diaryEntriesCollection
+        .where('userId', isEqualTo: userId)
+        .where('created', isGreaterThanOrEqualTo: Timestamp.fromDate(oneMonthAgo))
+        .orderBy('created', descending: true)
+        .get();
+
+      return snapshot.docs
+        .map((doc) => DiaryEntryModel.fromFirestore(doc).context)
+        .toList()
+        .join('\n');
     } catch (e) {
       rethrow;
     }
