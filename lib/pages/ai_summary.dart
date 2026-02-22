@@ -7,6 +7,9 @@ import '../services/models/ai_chat_model.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 final List<_ChatMessage> _messages = [];
+final List<String> _diaryContexts = [];
+final List<Content> _chatHistory = [];
+
 class AISummaryPage extends StatefulWidget {
 
   const AISummaryPage({super.key});
@@ -23,8 +26,7 @@ class _ASummaryPageState extends State<AISummaryPage> {
 
   late final GeminiService _geminiServiceKeyWord;
   late final GeminiService _geminiServiceSummary;
-  final List<Content> _chatHistory = [];
-  final List<String> _diaryContexts = [];
+
 
   Future<List<String>> _fetchDiaryEntriesWithKeyword(List<String> keywords) async {
     if (keywords.isEmpty) {
