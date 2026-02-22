@@ -437,6 +437,7 @@ Return ONLY a JSON object with no other text:''';
                   double maxWidth = constraints.maxWidth * 0.8;
                   return Center(
                     child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
                         SizedBox(
                           height: 5,
@@ -472,6 +473,7 @@ Return ONLY a JSON object with no other text:''';
                             ],
                           ),
                           child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.center,
                             children: [
                               Stack(
                                 children: [
@@ -579,7 +581,7 @@ Return ONLY a JSON object with no other text:''';
                 ),
               ),
               SizedBox(
-                width: 40,
+                width: maxWidth * 0.065,
               ),
               SizedBox(
                 width: maxWidth * 0.45,
