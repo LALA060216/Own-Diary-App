@@ -64,6 +64,27 @@ class GeminiService {
     }
   }
 
+  Future<String> getAttentionAnalysis(String diaryEntry) async {
+    try{
+      final trimmedEntry = diaryEntry.trim();
+      if (trimmedEntry.isEmpty) {
+        return "Error: Empty diary entry";
+      }
+
+      final fullPrompt = '${_chatModel.prompt}\nDiary entry:\n$trimmedEntry';
+      
+      final response = await _model.generateContent([
+        Content.text(fullPrompt),
+      ]);
+      
+      return response.text ?? "{}";
+    } catch (e) {
+      print("=== GEMINI ERROR ===");
+      print("Error: $e");
+      return "Error: $e";
+    }
+  }
+
   Future<String> sendMessageWithDiaryEntry(String userMessage, List<Content> previousMessage, List<String> contexts) async {
     try {
       final diaries = <Content>[Content.text(_chatModel.prompt)];

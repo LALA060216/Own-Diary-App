@@ -1,12 +1,16 @@
+import 'dart:convert';
+
 import 'package:diaryapp/main.dart';
 import 'package:diaryapp/services/firestore_service.dart';
 import 'package:diaryapp/services/gemini_service.dart';
 import 'package:diaryapp/services/models/ai_chat_model.dart';
+import 'package:diaryapp/services/models/diary_entry_model.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:fl_chart/fl_chart.dart';
 import 'newdiary_page.dart';
 
 bool createdNewDiaryToday = false;
@@ -14,6 +18,7 @@ String streak = '';
 List<int> status = [0,0];
 String oldDiaryContext = '';
 bool updatedDiary = true;
+Map<String, int> attentionData = {};
 
 class Homepage extends StatefulWidget {
   const Homepage({super.key});
@@ -30,16 +35,27 @@ class _HomepageState extends State<Homepage> with RouteAware{
   List<String> imageUrls = [];
   String? diaryId = '';
   bool isLoading = false;
-  String prompt = 'You are a sentiment analyzer. Analyze the diary entry and select the best matching index (0-19) from the two lists below.\n'+
-  'Health Statuses (0-19):\n'+
-  '["Healthy", "Infected", "Feverish", "Chills", "Painful", "Fatigued", "Dizzy", "Depressed", "Nauseous", "Active", "Bedridden", "Energetic", "Weak", "Immobile", "Pregnant", "Frail", "Hospitalized", "Hygienic", "Overweight", "Critical"]\n'+
-  'Emotion Statuses (0-19):\n'+
-  '["Happy", "Overjoyed", "Loved", "Neutral", "Sad", "Depressed", "Angry", "Furious", "Annoyed", "Exhausted", "Embarrassed", "Shocked", "Awkward", "Confused", "Scared", "Stressed", "Heartbroken", "Gloomy", "Chill", "Terrible"]\n'+
-  'Return ONLY two numbers separated by a space.\n'+
-  '!!Important!! Follow these two Rules: '+
-  '1) If the diary entry describes emotions but DOES NOT mention physical symptoms or health, default the health_index to 0'+
-  '2) Do not include any other text, explanations, or formatting. Just the two numbers. Example: 5 10. Bad response: 08 06';
-  late AIChatModel _chatModel = AIChatModel(prompt: prompt, model: 'gemma-3-27b-it');
+  bool isloadingAttention = false;
+
+  String promptForMood = 'You are a sentiment analyzer. Analyze the diary entry and select the best matching index (0-19) from the two lists below.\nHealth Statuses (0-19):\n["Healthy", "Infected", "Feverish", "Chills", "Painful", "Fatigued", "Dizzy", "Depressed", "Nauseous", "Active", "Bedridden", "Energetic", "Weak", "Immobile", "Pregnant", "Frail", "Hospitalized", "Hygienic", "Overweight", "Critical"]\nEmotion Statuses (0-19):\n["Happy", "Overjoyed", "Loved", "Neutral", "Sad", "Depressed", "Angry", "Furious", "Annoyed", "Exhausted", "Embarrassed", "Shocked", "Awkward", "Confused", "Scared", "Stressed", "Heartbroken", "Gloomy", "Chill", "Terrible"]\nReturn ONLY two numbers separated by a space.\n!!Important!! Follow these two Rules: 1) If the diary entry describes emotions but DOES NOT mention physical symptoms or health, default the health_index to 0. 2) Do not include any other text, explanations, or formatting. Just the two numbers. Example: 5 10. Bad response: 08 06';
+  String promptForAnalyse = '''Analyze this diary entry and identify what the user is paying ATTENTION to - the main TOPICS, SUBJECTS, or FOCUS AREAS mentioned.
+
+IMPORTANT RULES:
+1. Extract meaningful topics/subjects the person focused on: work, family, friends, school, exercise, health, projects, hobbies, relationships, travel, learning, etc.
+2. DO NOT extract vague words like: time, day, today, things, stuff, moment, situation, life, feelings, emotions
+3. DO NOT extract people names - use their relationship instead (e.g., "mom" instead of "Sarah")
+4. Values are percentages (integers) that must sum to exactly 100
+5. Include 2-5 topics maximum, based on what the diary entry emphasizes
+
+EXAMPLES:
+- Diary: "Had a great day with family, went to the gym, then did some work emails" -> {"family": 40, "exercise": 30, "work": 30}
+- Diary: "Studied for my exam, went to school, met friends for lunch" -> {"school": 45, "study": 35, "friends": 20}
+- Diary: "Worked on my project all day, it's going well" -> {"work": 60, "project": 40}
+
+Return ONLY a JSON object with no other text:''';
+  
+  late AIChatModel _chatModel = AIChatModel(prompt: promptForMood, model: 'gemma-3-27b-it');
+  late AIChatModel _analyseChatModel = AIChatModel(prompt: promptForAnalyse, model: 'gemma-3-27b-it');
   String previousTitle = '';
 
   List<dynamic> healthIcons = [
@@ -182,7 +198,9 @@ class _HomepageState extends State<Homepage> with RouteAware{
     _checkIfCreatedNewDiaryToday();
     _didUpdatedDiary().then((updated) {
       if (updated) {
-        _refreshMood();
+        String context = oldDiaryContext;
+        _refreshMood(context);
+        _refreshAttention(context);
       }
     });
     _getStreak();
@@ -199,7 +217,9 @@ class _HomepageState extends State<Homepage> with RouteAware{
     _checkIfCreatedNewDiaryToday();
     _didUpdatedDiary().then((updated) {
       if (updated) {
-        _refreshMood();
+        String context = oldDiaryContext;
+        _refreshMood(context);
+        _refreshAttention(context);
       }
     });
     _getStreak();
@@ -245,14 +265,10 @@ class _HomepageState extends State<Homepage> with RouteAware{
     return false;
   }
 
-  Future<void> _refreshMood() async {
+  Future<void> _refreshMood(String context) async {
     isLoading = true;
-    
-    final newestDiary = await firestoreService.getNewestDiaryDetail(userId);
-    String context = newestDiary?.context ?? '';
     await GeminiService(chatModel: _chatModel).getMoodAnalysis(context).then((value) {
       try {
-        print(value);
         final numbers = RegExp(r'\d+').allMatches(value)
             .map((m) => int.parse(m.group(0)!))
             .toList();
@@ -264,10 +280,60 @@ class _HomepageState extends State<Homepage> with RouteAware{
           });
         }
       } catch (e) {
-        print("Error decoding mood analysis: $e");
-        print("Response was: $value");
+        if (!mounted) return;
         setState(() {
           status = [0, 0];
+        });
+      }
+    });
+  }
+
+  Future<void> _refreshAttention(String context) async {
+    isloadingAttention = true;
+    
+    await GeminiService(chatModel: _analyseChatModel).getAttentionAnalysis(context).then((value) {
+      try {
+        Map<String, int> parsedData = {};
+        String cleanedValue = value.trim();
+        if (cleanedValue.startsWith('```')) {
+          cleanedValue = cleanedValue
+              .replaceAll(RegExp(r'```json\s*'), '')
+              .replaceAll(RegExp(r'```\s*'), '')
+              .trim();
+        }
+        // Try to parse as JSON
+        try {
+          final Map<String, dynamic> jsonData = jsonDecode(cleanedValue);
+          jsonData.forEach((key, value) {
+            parsedData[key] = value is int ? value : int.tryParse(value.toString()) ?? 0;
+          });
+        } catch (jsonError) {
+          String cleaned = cleanedValue.replaceAll(RegExp(r'[{}]'), '').trim();
+          List<String> pairs = cleaned.split(',');
+
+          for (String pair in pairs) {
+            List<String> keyValue = pair.split(':');
+            if (keyValue.length == 2) {
+              String key = keyValue[0].trim().replaceAll('"', '');
+              int val = int.tryParse(keyValue[1].trim()) ?? 0;
+              parsedData[key] = val;
+            }
+          }
+        }
+
+
+        setState(() {
+          isloadingAttention = false;
+          attentionData = parsedData;
+        });
+
+      } catch (e) {
+        print("Error decoding attention analysis: $e");
+        print("Response was: $value");
+        if (!mounted) return;
+        setState(() {
+          isloadingAttention = false;
+          attentionData = {};
         });
       }
     });
@@ -284,41 +350,48 @@ class _HomepageState extends State<Homepage> with RouteAware{
       body: Column(
         mainAxisAlignment: MainAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Align(
-                alignment: Alignment.centerLeft,
-                child: Padding(
-                  padding: const EdgeInsets.only(left: 20.0, top: 50),
-                  child: Text(
-                    "Hello ${FirebaseAuth.instance.currentUser?.displayName ?? 'User'}!",
-                    style: TextStyle(
-                      fontSize: 30,
-                      fontWeight: FontWeight.bold,
-                      fontFamily: 'Lobstertwo',
+          Container(
+            color: Color(0xfff5f5f5),
+            child: Column(
+              children: [
+                Row(
+                  children: [
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: Padding(
+                        padding: const EdgeInsets.only(left: 20.0, top: 50),
+                        child: Text(
+                          "Hello ${FirebaseAuth.instance.currentUser?.displayName ?? 'User'}!",
+                          style: TextStyle(
+                            fontSize: 30,
+                            fontWeight: FontWeight.bold,
+                            fontFamily: 'Lobstertwo',
+                          ),
+                        ),
+                      ),
                     ),
-                  ),
+                    Spacer(),
+                    Padding(
+                      padding: const EdgeInsets.only(right: 20.0, top: 40),
+                      child: streakContainer(streak != '' ? int.parse(streak) : 0),
+                    ),
+                    SizedBox(
+                      width: 1,
+                    )
+                  ],
                 ),
-              ),
-              Spacer(),
-              Padding(
-                padding: const EdgeInsets.only(right: 20.0, top: 40),
-                child: streakContainer(streak != '' ? int.parse(streak) : 0),
-              ),
-              SizedBox(
-                width: 1,
-              )
-            ],
-          ),
-          SizedBox(
-            height: 10,
-          ),
-          Divider(
-            height: 0.1,
-            color: Colors.grey,
-            thickness: 2,
-            indent: 20,
-            endIndent: 20,
+                SizedBox(
+                  height: 10,
+                ),
+                Divider(
+                  height: 0.1,
+                  color: Colors.grey,
+                  thickness: 2,
+                  indent: 20,
+                  endIndent: 20,
+                ),
+              ],
+            ),
           ),
           Expanded(
             child: SingleChildScrollView(
@@ -345,19 +418,46 @@ class _HomepageState extends State<Homepage> with RouteAware{
                         SizedBox(
                           height: 20,
                         ),
-                        Text(
-                          "Today's Mood",
-                          style: TextStyle(
-                            fontSize: 30,
-                            fontWeight: FontWeight.bold,
-                            fontFamily: 'Lobstertwo',
+                        if (createdNewDiaryToday)
+                          Container(
+                            margin: EdgeInsets.symmetric(horizontal: 10, vertical: 15),
+                            padding: EdgeInsets.all(25),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(20),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.2),
+                                  blurRadius: 15,
+                                  spreadRadius: 2,
+                                  offset: Offset(0, 5),
+                                ),
+                              ],
+                            ),
+                            child: Column(
+                              children: [
+                                Text(
+                                  "Mood",
+                                  style: TextStyle(
+                                    fontSize: 30,
+                                    fontWeight: FontWeight.bold,
+                                    fontFamily: 'Lobstertwo',
+                                    color: Colors.black87,
+                                  ),
+                                ),
+                                SizedBox(height: 20),
+                                moodBlocks(maxWidth, createdNewDiaryToday),
+                                SizedBox(height: 20),
+                                if (isloadingAttention)
+                                  CircularProgressIndicator()
+                                else if (attentionData.isNotEmpty)
+                                  _buildAttentionChart(),
+                              ],
+                            ),
                           ),
-                        ),
                         SizedBox(
                           height: 20,
                         ),
-                        if (createdNewDiaryToday)
-                          moodBlocks(maxWidth, createdNewDiaryToday),
                       ],
                     ),
                   );
@@ -374,10 +474,9 @@ class _HomepageState extends State<Homepage> with RouteAware{
     return Container(
       decoration: BoxDecoration(
         border: Border.all(color: const Color.fromARGB(255, 250, 160, 160), width: 3),
-        borderRadius: BorderRadius.circular(10)
+        borderRadius: BorderRadius.circular(25)
       ),
       padding: EdgeInsets.all(8),
-      height: 60,
       child:Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
@@ -401,43 +500,26 @@ class _HomepageState extends State<Homepage> with RouteAware{
                 height: maxWidth * 0.45,
                 child: Container(
                   decoration: BoxDecoration(
+                    color: createdNewDiaryToday ? healthColors[status[0]] : Color.fromARGB(255, 100, 100, 100),
                     borderRadius: BorderRadius.circular(30),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Color.fromARGB(100, 0, 0, 0),
-                        blurRadius: 20,
-                        spreadRadius: 2,
-                        offset: Offset(0, 10),
-                      ),
-                      BoxShadow(
-                        color: Color.fromARGB(80, 150, 100, 200),
-                        blurRadius: 15,
-                        spreadRadius: 1,
-                        offset: Offset(0, 5),
-                      ),
-                    ],
                   ),
-                  child: Ink(
-                    decoration: BoxDecoration(
-                      color: createdNewDiaryToday ? healthColors[status[0]] : Color.fromARGB(255, 100, 100, 100),
+                  child: Material(
+                    color: Colors.transparent,
+                    borderRadius: BorderRadius.circular(30),
+                    child: InkWell(
+                      onTap: null,
                       borderRadius: BorderRadius.circular(30),
-                    ),
-                    child: ElevatedButton(
-                      onPressed: null,
-                      style: ElevatedButton.styleFrom(
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(30),
+                      child: Container(
+                        padding: EdgeInsets.all(8),
+                        child: isLoading ? Center(child: CircularProgressIndicator(color: Colors.white)) : Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            FaIcon(healthIcons[status[0]], color: const Color.fromARGB(255, 255, 255, 255), size: maxWidth * 0.15), 
+                            Padding(padding:  EdgeInsets.only(bottom: maxWidth * 0.02)), 
+                            Text(healthStatuses[status[0]], style: TextStyle(fontSize: maxWidth * 0.06, color: const Color.fromARGB(255, 255, 255, 255), fontWeight: FontWeight.bold)),
+                          ],
                         ),
-                        elevation: 0,
-                      ), 
-                      child: isLoading ? CircularProgressIndicator(color: Colors.white) : Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          FaIcon(healthIcons[status[0]], color: const Color.fromARGB(255, 255, 255, 255), size: maxWidth * 0.15), 
-                          Padding(padding:  EdgeInsets.only(bottom: maxWidth * 0.02)), 
-                          Text(healthStatuses[status[0]], style: TextStyle(fontSize: maxWidth * 0.06, color: const Color.fromARGB(255, 255, 255, 255), fontWeight: FontWeight.bold)),
-                        ],
-                      )
+                      ),
                     ),
                   ),
                 ),
@@ -450,59 +532,168 @@ class _HomepageState extends State<Homepage> with RouteAware{
                 height: maxWidth * 0.45,
                 child: Container(
                   decoration: BoxDecoration(
+                    color: createdNewDiaryToday ? emotionColors[status[1]] : Color.fromARGB(255, 100, 100, 100),
                     borderRadius: BorderRadius.circular(30),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Color.fromARGB(100, 0, 0, 0),
-                        blurRadius: 20,
-                        spreadRadius: 2,
-                        offset: Offset(0, 10),
-                      ),
-                      BoxShadow(
-                        color: Color.fromARGB(80, 150, 100, 200),
-                        blurRadius: 15,
-                        spreadRadius: 1,
-                        offset: Offset(0, 5),
-                      ),
-                    ],
                   ),
-                  child: Ink(
-                    decoration: BoxDecoration(
-                      color: createdNewDiaryToday ? emotionColors[status[1]] : Color.fromARGB(255, 100, 100, 100),
+                  child: Material(
+                    color: Colors.transparent,
+                    borderRadius: BorderRadius.circular(30),
+                    child: InkWell(
+                      onTap: null,
                       borderRadius: BorderRadius.circular(30),
-                    ),
-                    child: ElevatedButton(
-                      onPressed: null,
-                      style: ElevatedButton.styleFrom(
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(30),
+                      child: Container(
+                        padding: EdgeInsets.all(8),
+                        child: isLoading ? Center(child: CircularProgressIndicator(color: Colors.white)) : Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            FaIcon(emotionIcons[status[1]], color: const Color.fromARGB(255, 255, 255, 255), size: maxWidth * 0.15), 
+                            Padding(padding:  EdgeInsets.only(bottom: maxWidth * 0.02)), 
+                            Text(emotionStatus[status[1]], style: TextStyle(fontSize: maxWidth * 0.05, color: const Color.fromARGB(255, 255, 255, 255), fontWeight: FontWeight.bold)),
+                          ],
                         ),
-                        elevation: 0,
-                        shadowColor: Colors.transparent,
-                        backgroundColor: Colors.transparent,
-                      ), 
-                      child: isLoading ? CircularProgressIndicator(color: Colors.white) :Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          FaIcon(emotionIcons[status[1]], color: const Color.fromARGB(255, 255, 255, 255), size: maxWidth * 0.15), 
-                          Padding(padding:  EdgeInsets.only(bottom: maxWidth * 0.02)), 
-                          Text(emotionStatus[status[1]], style: TextStyle(fontSize: maxWidth * 0.06, color: const Color.fromARGB(255, 255, 255, 255), fontWeight: FontWeight.bold)),
-                        ],
-                      )
+                      ),
                     ),
                   ),
-                ),
+                )
               ),
             ]
           ),
         ),
-        SizedBox(
-          height: 20,
-        ),
-        SizedBox(
-          height: 150,
-        ),
       ]
+    );
+  }
+
+  Widget _buildAttentionChart(){
+    if (attentionData.isEmpty) {
+      return SizedBox.shrink();
+    }
+    
+    // More vibrant and appealing colors
+    List<Color> chartColors = [
+      const Color(0xFF6366F1), // Indigo
+      const Color(0xFF10B981), // Emerald
+      const Color(0xFFF59E0B), // Amber
+      const Color(0xFFEC4899), // Pink
+      const Color(0xFF8B5CF6), // Violet
+      const Color(0xFF06B6D4), // Cyan
+      const Color(0xFFEF4444), // Red
+      const Color(0xFF14B8A6), // Teal
+    ];
+
+    int colorIndex = 0;
+    // sort attentionData by value in descending order 
+    var sortedAttentionData = attentionData.entries.toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
+    List<PieChartSectionData> sections = sortedAttentionData.map((entry) {
+      final section = PieChartSectionData(
+        value: entry.value.toDouble(),
+        color: chartColors[colorIndex % chartColors.length],
+        radius: 80,
+        title: '${entry.value}%',
+        titleStyle: TextStyle(
+          fontSize: 14,
+          fontWeight: FontWeight.bold,
+          color: Colors.white,
+        )
+      );
+      colorIndex++;
+      return section;
+    }).toList();
+
+    return Container(
+      margin: EdgeInsets.symmetric(horizontal: 10, vertical: 15),
+      padding: EdgeInsets.all(25),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            'Attention Focus',
+            style: TextStyle(
+              fontSize: 22,
+              fontWeight: FontWeight.bold,
+              color: Colors.black87,
+              fontFamily: 'Lobstertwo',
+            ),
+          ),
+          SizedBox(height: 50),
+          SizedBox(
+            height: 240,
+            child: PieChart(
+              PieChartData(
+                sections: sections,
+                centerSpaceRadius: 65,
+                sectionsSpace: 10,
+                borderData: FlBorderData(show: false),
+              ),
+            ),
+          ),
+          SizedBox(height: 30),
+          Container(
+            padding: EdgeInsets.all(15),
+            decoration: BoxDecoration(
+              color: Colors.grey.shade50,
+              borderRadius: BorderRadius.circular(15),
+            ),
+            child: Wrap(
+              spacing: 15,
+              runSpacing: 12,
+              alignment: WrapAlignment.center,
+              children: sortedAttentionData.asMap().entries.map((entry) {
+                final index = entry.key;
+                final data = entry.value;
+                final color = chartColors[index % chartColors.length];
+
+                return Container(
+                  padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: color.withOpacity(0.3), width: 1.5),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        width: 18,
+                        height: 18,
+                        decoration: BoxDecoration(
+                          color: color,
+                          borderRadius: BorderRadius.circular(4),
+                          boxShadow: [
+                            BoxShadow(
+                              color: color.withOpacity(0.4),
+                              blurRadius: 6,
+                              spreadRadius: 1,
+                            ),
+                          ],
+                        ),
+                      ),
+                      SizedBox(width: 10),
+                      Text(
+                        data.key,
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.black87,
+                        ),
+                      ),
+                      SizedBox(width: 8),
+                      Text(
+                        '${data.value}%',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.bold,
+                          color: color,
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }).toList(),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
