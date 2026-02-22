@@ -50,7 +50,8 @@ class _ASummaryPageState extends State<AISummaryPage> {
     List<String> allContexts = [];
     for (var doc in querySnapshot.docs) {
       String context = doc['context'] ?? '';
-      allContexts.add(context);
+      String date = doc['created']?.toString() ?? '';
+      allContexts.add('$date: $context');
     }
     return allContexts;
   }
@@ -116,6 +117,7 @@ class _ASummaryPageState extends State<AISummaryPage> {
     setState((){
       _messages.add(_ChatMessage(role: _Role.user, text: text));
       is_sending = true;
+      _controller.clear();
     });
 
     // Add user message to chat history
@@ -133,7 +135,7 @@ class _ASummaryPageState extends State<AISummaryPage> {
       setState(() {
         _messages.add(_ChatMessage(role: _Role.ai, text: summary));
         is_sending = false;
-        _controller.clear();
+        
       });
       _chatHistory.add(Content.text('User text: $text'));
       _chatHistory.add(Content.text('AI response: $summary'));
