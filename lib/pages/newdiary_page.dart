@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:async';
+import 'package:diaryapp/bottom_menu.dart';
 import 'package:diaryapp/services/firestore_service.dart';
 import 'package:diaryapp/services/gemini_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -603,7 +604,7 @@ class _NewDiaryState extends State<NewDiary> {
       leading: IconButton(
         icon: Icon(Icons.arrow_back, color: Colors.black),
         onPressed: () {
-          Navigator.pop(context);
+          Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => BottomMenu()));
         },
       ),
     );
