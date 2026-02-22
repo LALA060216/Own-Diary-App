@@ -5,6 +5,7 @@ import 'dart:convert';
 import '../services/gemini_service.dart';
 import '../services/models/ai_chat_model.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:intl/intl.dart';
 
 final List<_ChatMessage> _messages = [];
 final List<String> _diaryContexts = [];
@@ -50,9 +51,13 @@ class _ASummaryPageState extends State<AISummaryPage> {
     List<String> allContexts = [];
     for (var doc in querySnapshot.docs) {
       String context = doc['context'] ?? '';
-      String date = doc['created']?.toString() ?? '';
-      allContexts.add('$date: $context');
+      Timestamp? timestamp = doc['created'];
+      if (timestamp != null) {
+        DateTime date = timestamp.toDate();
+        allContexts.add('date: ${DateFormat('yyyy-MM-dd').format(date)} Diary: $context');
+      }
     }
+    print(allContexts);
     return allContexts;
   }
 
@@ -100,7 +105,7 @@ class _ASummaryPageState extends State<AISummaryPage> {
       model: 'gemma-3-27b-it'
     );
     final chatModelSummary = AIChatModel(
-      prompt: 'Reply the user text using the list of diary entries provided, staying directly relevant to them with no extra assumptions or unrelated information.\nReturn a concise response.',
+      prompt: 'Reply the user text using the list of diary entries with date provided, staying directly relevant to them with no extra assumptions or unrelated information. If the diary entries have no relevant information, respond with normal conversation.\nReturn a concise response.',
       model: 'gemini-2.5-flash'
     );
     
