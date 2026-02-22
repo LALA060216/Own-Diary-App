@@ -51,7 +51,9 @@ class _Bottommenustate extends State<BottomMenu>{
     return Scaffold(
       extendBody: true,
       body: _pages[cindex],
-      floatingActionButton: FloatingActionButton(
+      floatingActionButton: cindex == 2 
+      ? null 
+      :FloatingActionButton(
         onPressed: () {
           Navigator.push(
             context, 

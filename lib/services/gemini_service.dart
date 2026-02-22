@@ -9,7 +9,7 @@ class GeminiService {
     : _chatModel = chatModel {
     _model = GenerativeModel(
       model: _chatModel.model,
-      apiKey: 'AIzaSyCcLIyQT03Skh9Cr4l-b7acBDF8pfjgwiw',
+      apiKey: 'AIzaSyB7fyWwmbbFQEV_0IYTXBV6EZ0uUsELFj8',
       generationConfig: GenerationConfig(
         temperature: 0.6,
         topP: 0.9,
@@ -64,16 +64,16 @@ class GeminiService {
     }
   }
 
-  Future<String> sendMessageWithDiaryEntry(String userMessage, List<String> contexts) async {
+  Future<String> sendMessageWithDiaryEntry(String userMessage, List<Content> previousMessage, List<String> contexts) async {
     try {
-      final history = <Content>[Content.text(_chatModel.prompt)];
+      final diaries = <Content>[Content.text(_chatModel.prompt)];
       for (final context in contexts) {
-        history.add(Content.text('Diary entry: $context'));
+        diaries.add(Content.text('Diary entry: $context'));
       }
 
-      final chat = _model.startChat(history: history);
+      final chat = _model.startChat(history: diaries);
 
-      final response = await chat.sendMessage(Content.text(userMessage));
+      final response = await chat.sendMessage(Content.text('Previous message: $previousMessage\nCurrent message: $userMessage'));
       return response.text ?? "Sorry, I couldn't generate a response.";
     } catch (e) {
       return "Error: $e";

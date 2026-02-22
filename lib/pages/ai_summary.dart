@@ -24,6 +24,7 @@ class _ASummaryPageState extends State<AISummaryPage> {
   late final GeminiService _geminiServiceKeyWord;
   late final GeminiService _geminiServiceSummary;
   final List<Content> _chatHistory = [];
+  final List<String> _diaryContexts = [];
 
   Future<List<String>> _fetchDiaryEntriesWithKeyword(List<String> keywords) async {
     if (keywords.isEmpty) {
@@ -92,12 +93,12 @@ class _ASummaryPageState extends State<AISummaryPage> {
     super.initState();
     // Initialize AIChatModel
     final chatModelKeyWord = AIChatModel(
-      prompt: 'You are a keyword extraction assistant for a diary search system.\nTask:\nExtract keywords from the user text to help find related diary entries.\nIMPORTANT:\nDo NOT ignore meaningful words. Preserve important details such as people (friend, mom, boss, girlfriend), places (school, office, beach, japan), events (exam, meeting, trip, argument), emotions (stress, happy, angry, anxious), and activities (study, travel, dinner, workout).\nRules:\n- Return 5 to 10 keywords\n- Use lowercase\n- No duplicates\n- Single words or short phrases\n- Keep specific nouns if present\n- Include synonyms only if helpful\n- Do NOT remove words just because they seem common if they carry meaning\return empty list if nothing\nFormat:Example format: ["keyword1", "keyword2", "keyword3", "keyword4", "keyword5"]',
+      prompt: 'You are a keyword extraction assistant for a diary search system.\nTask:\nExtract keywords from the user text to help find related diary entries.\nIMPORTANT:\nDo NOT ignore meaningful words. Preserve important details such as people (friend, mom, boss, girlfriend), places (school, office, beach, japan), events (exam, meeting, trip, argument), emotions (stress, happy, angry, anxious), and activities (study, travel, dinner, workout).\nRules:\n- Return 0 to 10 keywords\n- Use lowercase\n- No duplicates\n- Single words or short phrases\n- Keep specific nouns if present\n- Include synonyms only if helpful\n- Do NOT remove words just because they seem common if they carry meaning\return empty list if nothing\nFormat:Example format: ["keyword1", "keyword2", "keyword3", "keyword4", "keyword5"]',
       model: 'gemma-3-27b-it'
     );
     final chatModelSummary = AIChatModel(
-      prompt: 'Talk only about the provided diary entries and the text, staying directly relevant to them with no extra assumptions or unrelated information.\nReturn a concise response.',
-      model: 'gemma-3-27b-it'
+      prompt: 'Reply the user text using the list of diary entries provided, staying directly relevant to them with no extra assumptions or unrelated information.\nReturn a concise response.',
+      model: 'gemini-2.5-flash'
     );
     
     // Initialize GeminiService with the model
@@ -123,16 +124,17 @@ class _ASummaryPageState extends State<AISummaryPage> {
       print('keywordResponse: $keywordResponse');
       final keywords = _parseKeywords(keywordResponse);
       final contexts = await _fetchDiaryEntriesWithKeyword(keywords);
-      print('contexts: $contexts');
-      final summary = await _geminiServiceSummary.sendMessageWithDiaryEntry(text, contexts);
+      _diaryContexts.addAll(contexts);
+      print('contexts: $_diaryContexts');
+      final summary = await _geminiServiceSummary.sendMessageWithDiaryEntry('user text: $text', _chatHistory, _diaryContexts);
 
       setState(() {
         _messages.add(_ChatMessage(role: _Role.ai, text: summary));
-        // Add AI response to chat history
-        _chatHistory.add(Content.text(summary));
         is_sending = false;
         _controller.clear();
       });
+      _chatHistory.add(Content.text('User text: $text'));
+      _chatHistory.add(Content.text('AI response: $summary'));
 
     } catch (e) {
       setState(() {
