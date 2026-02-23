@@ -216,8 +216,8 @@ Return ONLY a JSON object with no other text:''';
         if (updated) {
           _getDiaryContext(0).then((context) {
             if (mounted) {
-              _refreshMood(context);
-              _refreshAttention(context);
+              _refreshMood(context, index: 0);
+              _refreshAttention(context, index: 0);
             }
           });
         }
@@ -237,8 +237,8 @@ Return ONLY a JSON object with no other text:''';
     _didUpdatedDiary().then((updated) {
       if (updated) {
         _getDiaryContext(0).then((context) {
-          _refreshMood(context);
-          _refreshAttention(context);
+          _refreshMood(context, index: 0);
+          _refreshAttention(context, index: 0);
         });
       }
     });
@@ -267,10 +267,12 @@ Return ONLY a JSON object with no other text:''';
 
   Future<String> _getDiaryContext(int index) async {
     if (index == 0) {
-      return oldDiaryContext;
+      final newestDiary = await firestoreService.getNewestDiaryDetail(userId);
+      return newestDiary?.context ?? '';
     } else if (index == 1) {
       return await firestoreService.getUserDiaryContextPastWeek(userId);
-    } return '';
+    }
+    return '';
   }
 
   Future<void> _getStreak() async {
@@ -570,9 +572,9 @@ Return ONLY a JSON object with no other text:''';
                         child: isLoading ? Center(child: CircularProgressIndicator(color: Colors.white)) : Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            FaIcon(healthIcons[status[analyseIndex][0]], color: const Color.fromARGB(255, 255, 255, 255), size: maxWidth * 0.15), 
+                            FaIcon(createdNewDiaryToday || analyseIndex == 1 ? healthIcons[status[analyseIndex][0]] : Icons.question_mark, color: const Color.fromARGB(255, 255, 255, 255), size: maxWidth * 0.15), 
                             Padding(padding:  EdgeInsets.only(bottom: maxWidth * 0.02)), 
-                            Text(healthStatuses[status[analyseIndex][0]], style: TextStyle(fontSize: maxWidth * 0.06, color: const Color.fromARGB(255, 255, 255, 255), fontWeight: FontWeight.bold)),
+                            Text(createdNewDiaryToday || analyseIndex == 1 ? healthStatuses[status[analyseIndex][0]] : "No data", style: TextStyle(fontSize: maxWidth * 0.05, color: const Color.fromARGB(255, 255, 255, 255), fontWeight: FontWeight.bold)),
                           ],
                         ),
                       ),
@@ -602,9 +604,9 @@ Return ONLY a JSON object with no other text:''';
                         child: isLoading ? Center(child: CircularProgressIndicator(color: Colors.white)) : Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            FaIcon(emotionIcons[status[analyseIndex][1]], color: const Color.fromARGB(255, 255, 255, 255), size: maxWidth * 0.15), 
+                            FaIcon(createdNewDiaryToday || analyseIndex == 1 ? emotionIcons[status[analyseIndex][1]] : Icons.question_mark, color: const Color.fromARGB(255, 255, 255, 255), size: maxWidth * 0.15), 
                             Padding(padding:  EdgeInsets.only(bottom: maxWidth * 0.02)), 
-                            Text(emotionStatus[status[analyseIndex][1]], style: TextStyle(fontSize: maxWidth * 0.05, color: const Color.fromARGB(255, 255, 255, 255), fontWeight: FontWeight.bold)),
+                            Text(createdNewDiaryToday || analyseIndex == 1 ? emotionStatus[status[analyseIndex][1]] : "No data", style: TextStyle(fontSize: maxWidth * 0.05, color: const Color.fromARGB(255, 255, 255, 255), fontWeight: FontWeight.bold)),
                           ],
                         ),
                       ),
