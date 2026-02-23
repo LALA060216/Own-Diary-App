@@ -340,6 +340,53 @@ class _DetailsDiaryState extends State<DetailsDiary> {
               style: const TextStyle(fontSize: 16, color: Colors.grey),
             ),
             const SizedBox(height: 20),
+            if (_imageUrls.isNotEmpty || _newImages.isNotEmpty)
+              SizedBox(
+                height: 200,
+                child: ListView(
+                  scrollDirection: Axis.horizontal,
+                  children: [
+                    ..._imageUrls.asMap().entries.map((entry) {
+                      final index = entry.key;
+                      final url = entry.value;
+                      return Padding(
+                        padding: const EdgeInsets.only(right: 8.0),
+                        child: GestureDetector(
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => FullScreenImagePage(
+                                  imageUrls: _imageUrls,
+                                  initialIndex: index,
+                                ),
+                              ),
+                            );
+                          },
+                          child: Hero(
+                            tag: url,
+                            child: Image.network(
+                              url,
+                              fit: BoxFit.cover,
+                              width: MediaQuery.of(context).size.width * 0.8,
+                            ),
+                          ),
+                        ),
+                      );
+                    }),
+                    ..._newImages.map((file) {
+                      return Padding(
+                        padding: const EdgeInsets.only(right: 8.0),
+                        child: Image.file(
+                          file,
+                          fit: BoxFit.cover,
+                          width: MediaQuery.of(context).size.width * 0.8,
+                        ),
+                      );
+                    }),
+                  ],
+                ),
+              ),
             const SizedBox(height: 16),
             _isEditing
                 ? TextField(
