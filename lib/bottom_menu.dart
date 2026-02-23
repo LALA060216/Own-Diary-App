@@ -51,6 +51,7 @@ class _Bottommenustate extends State<BottomMenu>{
     return Expanded(
       child: GestureDetector(
         onTap: () {
+          FocusScope.of(context).unfocus();
           setState(() {
             cindex = index;
           });
@@ -101,19 +102,31 @@ class _Bottommenustate extends State<BottomMenu>{
         children: [
           Offstage(
             offstage: cindex != 1,
-            child: Diaries(),
+            child: ExcludeFocus(
+              excluding: cindex != 1,
+              child: Diaries(),
+            ),
           ),
           Offstage(
             offstage: cindex != 3,
-            child: AISummaryPage(),
+            child: ExcludeFocus(
+              excluding: cindex != 3,
+              child: AISummaryPage(),
+            ),
           ),
           Offstage(
             offstage: cindex != 4,
-            child: ProfilePage(),
+            child: ExcludeFocus(
+              excluding: cindex != 4,
+              child: ProfilePage(),
+            ),
           ),
           Offstage(
             offstage: cindex != 0,
-            child: Homepage(),
+            child: ExcludeFocus(
+              excluding: cindex != 0,
+              child: Homepage(),
+            ),
           ),
         ],
       ),
