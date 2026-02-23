@@ -20,7 +20,6 @@ class _Bottommenustate extends State<BottomMenu>{
   int cindex = 0;
   final FirestoreService firestoreService = FirestoreService();
   String? userId = FirebaseAuth.instance.currentUser?.uid;
-
   Future<void> _cameraPage() async {
     final XFile? captured = await ImagePicker().pickImage(
       source: ImageSource.camera,
