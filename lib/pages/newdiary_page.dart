@@ -8,7 +8,6 @@ import 'dart:io';
 import 'package:image_picker/image_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:diaryapp/services/firebase_storage_service.dart';
-import 'camera_page.dart';
 import 'full_screen_image_page.dart';
 import 'package:diaryapp/services/models/ai_chat_model.dart';
 // 魔丸
@@ -106,7 +105,12 @@ class _NewDiaryState extends State<NewDiary> {
     if (widget.imageFile != null) {
         _images.add(File(widget.imageFile!.path));
         pickedImages.add(File(widget.imageFile!.path));
-      createDiaryFromCam();
+      createDiaryFromCam().catchError((error) {
+        print('Error creating diary from camera: $error');
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error creating diary: $error')),
+        );
+      });
     }
     _diaryController.addListener(() async {
       try {
@@ -202,7 +206,7 @@ class _NewDiaryState extends State<NewDiary> {
 
   Future<void> createNewDiary() async {
     try {
-      _firestoreService.incrementDiaryPostCount(_userId);
+      await _firestoreService.incrementDiaryPostCount(_userId);
       _id = await _firestoreService.createDiaryEntry(
         userId: _userId,
         title: _titleController.text.trim(),
@@ -213,6 +217,7 @@ class _NewDiaryState extends State<NewDiary> {
       await _firestoreService.updateStreak(_userId, DateTime.now());
     } catch (e) {
       error = true;
+      rethrow;
     }
   }
 
@@ -250,11 +255,9 @@ class _NewDiaryState extends State<NewDiary> {
   }
 
   Future<void> openCameraPageAndUpload() async {
-    final capturedImage = await Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => CameraPage(fromNewDiary: true),
-      ),
+    final XFile? capturedImage = await _picker.pickImage(
+      source: ImageSource.camera,
+      imageQuality: 100,
     );
 
     if (capturedImage != null) {
@@ -780,9 +783,7 @@ class _NewDiaryState extends State<NewDiary> {
   AppBar appbar(BuildContext context) {
     return AppBar(
       automaticallyImplyLeading: false,
-      shadowColor: const Color(0xffEDEADE),
-      elevation: 2,
-      backgroundColor: const Color(0xfffffaf0),
+      backgroundColor: const Color(0xffffffff),
       centerTitle: true,
       title: Text(
         'New Diary', 

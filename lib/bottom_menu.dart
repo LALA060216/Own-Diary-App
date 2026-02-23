@@ -1,12 +1,13 @@
 
+import 'package:diaryapp/pages/newdiary_page.dart';
 import 'package:diaryapp/services/firestore_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'pages/home_page.dart';
 import 'pages/profile_page.dart';
 import 'pages/diary_sum.dart';
 import 'pages/ai_summary.dart';
-import 'pages/camera_page.dart';
 
 class BottomMenu extends StatefulWidget{
   const BottomMenu({super.key});
@@ -19,6 +20,26 @@ class _Bottommenustate extends State<BottomMenu>{
   int cindex = 0;
   final FirestoreService firestoreService = FirestoreService();
   String? userId = FirebaseAuth.instance.currentUser?.uid;
+
+  Future<void> _cameraPage() async {
+    final XFile? captured = await ImagePicker().pickImage(
+      source: ImageSource.camera,
+      imageQuality: 100,
+    );
+    setState(() {
+      cindex = 0;
+    });  
+    if (captured != null) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => NewDiary(
+            imageFile: captured,
+          ),
+        ),
+      );
+    }
+  }
 
   Widget _navbutton({
     required int index,
@@ -34,6 +55,9 @@ class _Bottommenustate extends State<BottomMenu>{
           setState(() {
             cindex = index;
           });
+          if (index == 2) {
+            _cameraPage();
+          }
         },
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 300),
@@ -45,8 +69,8 @@ class _Bottommenustate extends State<BottomMenu>{
             children: [
               Icon(
                 isActive ? activeIcon : icon,
-                size: isActive ? 28 : 26,
-                color: isActive ? Theme.of(context).primaryColor : Colors.grey,
+                size: 27,
+                color: isActive ? Color(0xff4a4a4a) : Colors.black,
               ),
               AnimatedOpacity(
                 duration: const Duration(milliseconds: 300),
@@ -59,7 +83,7 @@ class _Bottommenustate extends State<BottomMenu>{
                     style: TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.w600,
-                      color: Theme.of(context).primaryColor,
+                      color: Colors.grey,
                     ),
                   ),
                 ),
@@ -88,20 +112,28 @@ class _Bottommenustate extends State<BottomMenu>{
             offstage: cindex != 4,
             child: ProfilePage(),
           ),
-          if (cindex == 0) Homepage(),
-          if (cindex == 2) CameraPage(),
+          Offstage(
+            offstage: cindex != 0,
+            child: Homepage(),
+          ),
         ],
       ),
       bottomNavigationBar: 
-            BottomAppBar(
-              elevation: 15,
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              height: 80,
-              color: Color(0xfffffaf0),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                mainAxisSize: MainAxisSize.max,
-                children: [
+            Container(
+              decoration: const BoxDecoration(
+                border: Border(
+                  top: BorderSide(color: Color(0xffbdbdbd), width: 2),
+                ),
+              ),
+              child: BottomAppBar(
+                elevation: 15,
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                height: 80,
+                color: Color(0xffffffff),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  
+                  children: [
                   _navbutton(
                     index: 0,
                     icon: Icons.home_outlined,
@@ -110,14 +142,14 @@ class _Bottommenustate extends State<BottomMenu>{
                   ),
                   _navbutton(
                     index: 1,
-                    icon: Icons.data_exploration_outlined,
-                    activeIcon: Icons.data_exploration,
+                    icon: Icons.bar_chart_outlined,
+                    activeIcon: Icons.bar_chart,
                     title: 'Diaries'
                   ),
                   _navbutton(
                     index: 2,
-                    icon: Icons.camera_alt_outlined,
-                    activeIcon: Icons.camera_alt,
+                    icon: Icons.camera_rounded,
+                    activeIcon: Icons.camera_rounded,
                     title: 'Camera'
                   ),
                   _navbutton(
@@ -134,6 +166,7 @@ class _Bottommenustate extends State<BottomMenu>{
                   ),
                 ],
             ),
+    ),
     ),
     );
     

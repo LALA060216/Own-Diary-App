@@ -240,6 +240,12 @@ Return ONLY a JSON object with no other text:''';
           _refreshMood(context, index: 0);
           _refreshAttention(context, index: 0);
         });
+      } else {
+        if (mounted) {
+          setState(() {
+            isloadingAttention = false;
+          });
+        }
       }
     });
     _getStreak();
@@ -332,9 +338,13 @@ Return ONLY a JSON object with no other text:''';
   }
 
   Future<void> _refreshAttention(String context, {int? index}) async {
-    isloadingAttention = true;
     final analyseIndexAttention = index ?? analyseIndex;
-    
+
+    if (!mounted) return;
+    setState(() {
+      isloadingAttention = true;
+    });
+
     await GeminiService(chatModel: _analyseChatModel).getAttentionAnalysis(context).then((value) {
       try {
         Map<String, int> parsedData = {};
@@ -385,12 +395,12 @@ Return ONLY a JSON object with no other text:''';
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Color(0xfff5f5f5),
+      backgroundColor: Color(0xfff0f0f0),
       body: Column(
         mainAxisAlignment: MainAxisAlignment.start,
         children: [
           Container(
-            color: Color(0xfff5f5f5),
+            color: Color(0xffffffff),
             child: Column(
               children: [
                 Row(
@@ -422,13 +432,7 @@ Return ONLY a JSON object with no other text:''';
                 SizedBox(
                   height: 10,
                 ),
-                Divider(
-                  height: 0.1,
-                  color: Colors.grey,
-                  thickness: 2,
-                  indent: 20,
-                  endIndent: 20,
-                ),
+                
               ],
             ),
           ),
@@ -442,7 +446,7 @@ Return ONLY a JSON object with no other text:''';
                       crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
                         SizedBox(
-                          height: 5,
+                          height: 15,
                         ),
                         newDiaryButton(context, width: maxWidth),
                         SizedBox(
@@ -451,28 +455,38 @@ Return ONLY a JSON object with no other text:''';
                         if (createdNewDiaryToday) 
                           editDiaryButton(context, width: maxWidth)
                         else
-                          Text(
-                            "You haven't created a diary today. Let's write one!",
-                        style: TextStyle(fontSize: 16, color: Colors.red),
-                        ),
+                          Container(
+                            width: maxWidth,
+                            height: 50,
+                            decoration: BoxDecoration(
+                              color: Color(0xffffffff),
+                              borderRadius: BorderRadius.circular(25),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Color(0xffe6e6e6),
+                                  blurRadius: 10,
+                                  spreadRadius: 2,
+                                  offset: Offset(0, 5),
+                                ),
+                              ],
+                            ),
+                            child: Center(
+                              child: Text(
+                                "You haven't created a diary today",
+                                style: TextStyle(fontSize: 16, color: Colors.black54),
+                              ),
+                            ),
+                          ),
                         SizedBox(
-                          height: 20,
+                          height: 10,
                         ),
                         Container(
-                          width: constraints.maxWidth * 0.9,
+                          width: constraints.maxWidth * 0.95,
                           margin: EdgeInsets.symmetric(horizontal: 10, vertical: 15),
                           padding: EdgeInsets.all(25),
                           decoration: BoxDecoration(
                             color: Colors.white,
                             borderRadius: BorderRadius.circular(20),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withOpacity(0.2),
-                                blurRadius: 15,
-                                spreadRadius: 2,
-                                offset: Offset(0, 5),
-                              ),
-                            ],
                           ),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.center,
@@ -530,15 +544,12 @@ Return ONLY a JSON object with no other text:''';
 
   Container streakContainer(int streak) {
     return Container(
-      decoration: BoxDecoration(
-        border: Border.all(color: const Color.fromARGB(255, 250, 160, 160), width: 3),
-        borderRadius: BorderRadius.circular(25)
-      ),
-      padding: const EdgeInsets.all(8),
+      padding: const EdgeInsets.only(top: 12),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           const Icon(Icons.local_fire_department_rounded, color: Color.fromARGB(255, 237, 84, 84), size: 40),
+          SizedBox(width:5),
           Text(streak.toString(), style: const TextStyle(fontSize: 30, color: Color.fromARGB(255, 0, 0, 0), fontWeight: FontWeight.bold)),
         ],
       )
@@ -583,7 +594,7 @@ Return ONLY a JSON object with no other text:''';
                 ),
               ),
               SizedBox(
-                width: maxWidth * 0.065,
+                width: maxWidth * 0.125,
               ),
               SizedBox(
                 width: maxWidth * 0.45,
@@ -816,12 +827,12 @@ Return ONLY a JSON object with no other text:''';
             );
           },
           style: ElevatedButton.styleFrom(
-            backgroundColor: Color(0xfffffaf0),
+            backgroundColor: Color(0xffffffff),
             foregroundColor: const Color.fromARGB(255, 61, 61, 61),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(10), // Adjust the radius as needed
             ),
-            elevation: 10,
+            elevation: 5,
             shadowColor: Color.fromARGB(255, 161, 161, 161)
           ),
           child:Column(
@@ -857,12 +868,12 @@ Return ONLY a JSON object with no other text:''';
             );
           },
           style: ElevatedButton.styleFrom(
-            backgroundColor: Color(0xfffffaf0),
+            backgroundColor: Color(0xffffffff),
             foregroundColor: const Color.fromARGB(255, 61, 61, 61),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(10), // Adjust the radius as needed
             ),
-            elevation: 10,
+            elevation: 5,
             shadowColor: Color.fromARGB(255, 161, 161, 161)
           ),
           child:Column(

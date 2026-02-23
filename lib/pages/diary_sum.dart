@@ -1128,12 +1128,13 @@ Future<bool?> showDeleteConfirmationDialog(BuildContext context) {
 }
 
     return Scaffold(
-      backgroundColor: const Color(0xfff5f5f5),
+      backgroundColor: const Color(0xfff7f7f7),
 
       appBar: AppBar(
         automaticallyImplyLeading: false,
-        elevation: 2,
-        backgroundColor: const Color(0xfffffaf0),
+        backgroundColor: const Color(0xffffffff),
+        surfaceTintColor: Colors.transparent,
+        scrolledUnderElevation: 0,
         title: const Text(
           'Diary Summary',
           style: TextStyle(
@@ -1235,47 +1236,50 @@ Future<bool?> showDeleteConfirmationDialog(BuildContext context) {
                   ),
           ),
 
-          Row(
-            children: [
-              IconButton(
-                icon: const Icon(Icons.arrow_left),
-                onPressed: previousMonth,
-              ),
-
-              const SizedBox(width: 10),
-
-              Text(
-                "${monthName(selectedDate.month)} ${selectedDate.year}",
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
+          Container(
+            color: const Color(0xffffffff),
+            child: Row(
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.arrow_left),
+                  onPressed: previousMonth,
                 ),
-              ),
-
-              const Spacer(),
-
-              IconButton(
-                icon: Icon(isSearchOpen ? Icons.close : Icons.search),
-                onPressed: () {
-                  if (isSearchOpen) {
-                    _clearAllFilters();
-                    if (!mounted) return;
-                    _safeSetState(() {
-                      isSearchOpen = false;
-                    });
-                  } else {
-                    _safeSetState(() {
-                      isSearchOpen = true;
-                    });
-                  }
-                },
-              ),
-
-              IconButton(
-                icon: const Icon(Icons.arrow_right),
-                onPressed: nextMonth,
-              ),
-            ],
+            
+                const SizedBox(width: 10),
+            
+                Text(
+                  "${monthName(selectedDate.month)} ${selectedDate.year}",
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+            
+                const Spacer(),
+            
+                IconButton(
+                  icon: Icon(isSearchOpen ? Icons.close : Icons.search),
+                  onPressed: () {
+                    if (isSearchOpen) {
+                      _clearAllFilters();
+                      if (!mounted) return;
+                      _safeSetState(() {
+                        isSearchOpen = false;
+                      });
+                    } else {
+                      _safeSetState(() {
+                        isSearchOpen = true;
+                      });
+                    }
+                  },
+                ),
+            
+                IconButton(
+                  icon: const Icon(Icons.arrow_right),
+                  onPressed: nextMonth,
+                ),
+              ],
+            ),
           ),
 
           if (isSearchOpen)
@@ -1313,7 +1317,7 @@ Future<bool?> showDeleteConfirmationDialog(BuildContext context) {
                   const SizedBox(width: 8),
                   TextButton(
                     onPressed: _clearAllFilters,
-                    child: const Text('Clear'),
+                    child: const Text('Clear', style: TextStyle(color: Colors.black)),
                   ),
                 ],
               ),
@@ -1400,13 +1404,11 @@ Future<bool?> showDeleteConfirmationDialog(BuildContext context) {
                     final diary = diaries[index];
 
                     return Container(
-                      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      margin: const EdgeInsets.symmetric(horizontal: 0, vertical: 8),
                       // only margin; no decoration here so ripple isn't hidden
                       child: Material(
                         // Material provides the surface for the ripple
                         color: Colors.white,
-                        elevation: 2, // replaces the BoxShadow on Container
-                        borderRadius: BorderRadius.circular(12),
                         child: InkWell(
                           borderRadius: BorderRadius.circular(12),
                           splashColor: Theme.of(context).primaryColor.withValues(alpha: 0.2),

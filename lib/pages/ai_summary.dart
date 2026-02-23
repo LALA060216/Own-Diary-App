@@ -169,11 +169,10 @@ class _ASummaryPageState extends State<AISummaryPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Color(0xfff5f5f5),
       appBar: AppBar(
         automaticallyImplyLeading: false,
-        shadowColor: Color(0xffEDEADE),
-        elevation: 2,
-        backgroundColor: Color(0xfffffaf0),
+        backgroundColor: Color(0xffffffff),
         title: Text(
           'Chat with your Personal AI', 
           style: TextStyle(
@@ -199,7 +198,7 @@ class _ASummaryPageState extends State<AISummaryPage> {
                     margin: const EdgeInsets.symmetric(vertical: 4),
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: isUser ? Colors.blue.shade100: null,
+                      color: isUser ? Color(0xffdadada): null,
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: Text(msg.text),
@@ -215,7 +214,7 @@ class _ASummaryPageState extends State<AISummaryPage> {
               decoration: BoxDecoration(
                 color: Colors.grey.shade200,
                 borderRadius: BorderRadius.circular(25),
-                border: Border.all(color: Colors.grey.shade400)
+
               ),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.end,
