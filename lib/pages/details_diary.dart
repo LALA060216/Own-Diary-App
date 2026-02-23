@@ -11,17 +11,25 @@ import 'full_screen_image_page.dart';
 
 class DetailsDiary extends StatefulWidget {
   final DiaryEntryModel diary;
+  final int? focusImageIndex;
 
-  const DetailsDiary({super.key, required this.diary});
+  const DetailsDiary({
+    super.key,
+    required this.diary,
+    this.focusImageIndex,
+  });
 
   @override
   State<DetailsDiary> createState() => _DetailsDiaryState();
 }
 
 class _DetailsDiaryState extends State<DetailsDiary> {
+  static final RegExp _inlineImageTokenPattern = RegExp(r'\[img:(\d+)\]');
   final FirestoreService _firestoreService = FirestoreService();
   final FirebaseStorageService _storageService = FirebaseStorageService();
   final ImagePicker _picker = ImagePicker();
+  final ScrollController _scrollController = ScrollController();
+  final GlobalKey _focusTokenKey = GlobalKey();
 
   late final TextEditingController _titleController;
   late final TextEditingController _contextController;
@@ -33,6 +41,9 @@ class _DetailsDiaryState extends State<DetailsDiary> {
 
   bool _isEditing = false;
   bool _isSaving = false;
+  bool _didAutoScrollToFocusToken = false;
+  int _focusScrollAttempt = 0;
+  bool _highlightFocusToken = false;
 
   @override
   void initState() {
@@ -43,13 +54,53 @@ class _DetailsDiaryState extends State<DetailsDiary> {
 
     _titleController = TextEditingController(text: _currentTitle);
     _contextController = TextEditingController(text: _currentContext);
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _scrollToFocusTokenIfNeeded();
+    });
   }
 
   @override
   void dispose() {
+    _scrollController.dispose();
     _titleController.dispose();
     _contextController.dispose();
     super.dispose();
+  }
+
+  void _scrollToFocusTokenIfNeeded() {
+    if (!mounted) return;
+    if (_didAutoScrollToFocusToken) return;
+    if (_isEditing) return;
+    final targetIndex = widget.focusImageIndex;
+    if (targetIndex == null || targetIndex < 0) return;
+
+    final focusContext = _focusTokenKey.currentContext;
+    if (focusContext == null) {
+      if (_focusScrollAttempt >= 8) return;
+      _focusScrollAttempt++;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _scrollToFocusTokenIfNeeded();
+      });
+      return;
+    }
+
+    _didAutoScrollToFocusToken = true;
+    _highlightFocusToken = true;
+    setState(() {});
+    Scrollable.ensureVisible(
+      focusContext,
+      alignment: 0.2,
+      duration: const Duration(milliseconds: 280),
+      curve: Curves.easeOut,
+    );
+
+    Future.delayed(const Duration(milliseconds: 2000), () {
+      if (!mounted) return;
+      setState(() {
+        _highlightFocusToken = false;
+      });
+    });
   }
 
   Future<void> _pickImages() async {
@@ -122,6 +173,121 @@ class _DetailsDiaryState extends State<DetailsDiary> {
     }
   }
 
+  InlineSpan _buildInlineContextSpan(String text) {
+    final spans = <InlineSpan>[];
+    int cursor = 0;
+    bool attachedFocusKey = false;
+    final focusIndex = widget.focusImageIndex;
+
+    for (final match in _inlineImageTokenPattern.allMatches(text)) {
+      if (match.start > cursor) {
+        spans.add(
+          TextSpan(
+            text: text.substring(cursor, match.start),
+            style: const TextStyle(fontSize: 18, color: Colors.black87),
+          ),
+        );
+      }
+
+      final index = int.tryParse(match.group(1) ?? '');
+      if (index != null && index >= 0 && index < _imageUrls.length) {
+        final shouldAttachFocusKey =
+            !attachedFocusKey && focusIndex != null && index == focusIndex;
+        if (shouldAttachFocusKey) {
+          attachedFocusKey = true;
+        }
+        final shouldHighlightFocusedToken =
+            shouldAttachFocusKey && _highlightFocusToken;
+        spans.add(
+          WidgetSpan(
+            alignment: PlaceholderAlignment.middle,
+            child: GestureDetector(
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => FullScreenImagePage(
+                      imageUrls: _imageUrls,
+                      initialIndex: index,
+                    ),
+                  ),
+                );
+              },
+              child: AnimatedScale(
+                scale: shouldHighlightFocusedToken ? 1.04 : 1.0,
+                duration: const Duration(milliseconds: 220),
+                curve: Curves.easeOut,
+                child: AnimatedContainer(
+                  key: shouldAttachFocusKey ? _focusTokenKey : null,
+                  duration: const Duration(milliseconds: 220),
+                  curve: Curves.easeOut,
+                  margin: const EdgeInsets.symmetric(horizontal: 2),
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: shouldHighlightFocusedToken
+                        ? const Color(0xFFBDBDBD)
+                        : const Color(0xFFEDEADE),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.photo,
+                        size: 14,
+                        color: shouldHighlightFocusedToken
+                            ? const Color(0xFF8A6A00)
+                            : Colors.black54,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        'image',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.black87,
+                          fontWeight: FontWeight.w400,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+      } else {
+        spans.add(
+          TextSpan(
+            text: match.group(0),
+            style: const TextStyle(fontSize: 18, color: Colors.black54),
+          ),
+        );
+      }
+
+      cursor = match.end;
+    }
+
+    if (cursor < text.length) {
+      spans.add(
+        TextSpan(
+          text: text.substring(cursor),
+          style: const TextStyle(fontSize: 18, color: Colors.black87),
+        ),
+      );
+    }
+
+    if (spans.isEmpty) {
+      spans.add(
+        const TextSpan(
+          text: '',
+          style: TextStyle(fontSize: 18, color: Colors.black87),
+        ),
+      );
+    }
+
+    return TextSpan(children: spans);
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -142,6 +308,7 @@ class _DetailsDiaryState extends State<DetailsDiary> {
         ],
       ),
       body: SingleChildScrollView(
+        controller: _scrollController,
         padding: const EdgeInsets.all(16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -173,53 +340,6 @@ class _DetailsDiaryState extends State<DetailsDiary> {
               style: const TextStyle(fontSize: 16, color: Colors.grey),
             ),
             const SizedBox(height: 20),
-            if (_imageUrls.isNotEmpty || _newImages.isNotEmpty)
-              SizedBox(
-                height: 200,
-                child: ListView(
-                  scrollDirection: Axis.horizontal,
-                  children: [
-                    ..._imageUrls.asMap().entries.map((entry) {
-                      final index = entry.key;
-                      final url = entry.value;
-                      return Padding(
-                        padding: const EdgeInsets.only(right: 8.0),
-                        child: GestureDetector(
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => FullScreenImagePage(
-                                  imageUrls: _imageUrls,
-                                  initialIndex: index,
-                                ),
-                              ),
-                            );
-                          },
-                          child: Hero(
-                            tag: url,
-                            child: Image.network(
-                              url,
-                              fit: BoxFit.cover,
-                              width: MediaQuery.of(context).size.width * 0.8,
-                            ),
-                          ),
-                        ),
-                      );
-                    }),
-                    ..._newImages.map((file) {
-                      return Padding(
-                        padding: const EdgeInsets.only(right: 8.0),
-                        child: Image.file(
-                          file,
-                          fit: BoxFit.cover,
-                          width: MediaQuery.of(context).size.width * 0.8,
-                        ),
-                      );
-                    }),
-                  ],
-                ),
-              ),
             const SizedBox(height: 16),
             _isEditing
                 ? TextField(
@@ -231,9 +351,8 @@ class _DetailsDiaryState extends State<DetailsDiary> {
                       border: OutlineInputBorder(),
                     ),
                   )
-                : Text(
-                    _currentContext,
-                    style: const TextStyle(fontSize: 18),
+                : RichText(
+                    text: _buildInlineContextSpan(_currentContext),
                   ),
             if (_isSaving)
               const Padding(

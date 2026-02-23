@@ -26,6 +26,7 @@ class NewDiary extends StatefulWidget{
 }
 
 class _NewDiaryState extends State<NewDiary> {
+  static final RegExp _inlineImageTokenPattern = RegExp(r'\[img:(\d+)\]');
 
   final List<File> _images = [];
   final ImagePicker _picker = ImagePicker();
@@ -235,11 +236,16 @@ class _NewDiaryState extends State<NewDiary> {
   Future<void> pickImages() async {
     final List<XFile> pickedFiles = await _picker.pickMultiImage();
     if (pickedFiles.isEmpty) return;
+    final startIndex = previousImageUrls.length + _images.length;
+    final picked = pickedFiles.map((file) => File(file.path)).toList();
     if (!mounted) return;
     setState(() {
-      _images.addAll(pickedFiles.map((file) => File(file.path)));
+      _images.addAll(picked);
     });
-    pickedImages = pickedFiles.map((file) => File(file.path)).toList();
+    pickedImages = picked;
+    for (var i = 0; i < picked.length; i++) {
+      _insertImageTokenAtCursor(startIndex + i);
+    }
     waitDiaryCreate().then((_) => uploadImages());
   }
 
@@ -252,11 +258,13 @@ class _NewDiaryState extends State<NewDiary> {
     );
 
     if (capturedImage != null) {
+      final imageIndex = previousImageUrls.length + _images.length;
       if (!mounted) return;
       setState(() {
         _images.add(File(capturedImage.path));  
       });
       pickedImages.add(File(capturedImage.path)); 
+      _insertImageTokenAtCursor(imageIndex);
       waitDiaryCreate().then((_) => uploadImages());
     }
   }
@@ -293,28 +301,168 @@ class _NewDiaryState extends State<NewDiary> {
   }
 
   Future<void> removeImageAt(int index, bool isPreviousImage) async {
-    await _firebaseStorageService.deleteImage(isPreviousImage ? previousImageUrls[index] : imageUrls[index]);
+    final localIndex = isPreviousImage ? index : index - previousImageUrls.length;
+    if (!isPreviousImage && (localIndex < 0 || localIndex >= imageUrls.length)) {
+      return;
+    }
+    final targetUrl = isPreviousImage ? previousImageUrls[index] : imageUrls[localIndex];
+    await _firebaseStorageService.deleteImage(targetUrl);
     if (mounted) {
       setState(() {
         if (isPreviousImage) {
           previousImageUrls.removeAt(index);
         } else {
-          _images.removeAt(index);
-          imageUrls.removeAt(index);
+          _images.removeAt(localIndex);
+          imageUrls.removeAt(localIndex);
         }
       });
     } else {
       if (isPreviousImage) {
         previousImageUrls.removeAt(index);
       } else {
-        _images.removeAt(index);
-        imageUrls.removeAt(index);
+        _images.removeAt(localIndex);
+        imageUrls.removeAt(localIndex);
       }
     }
+    _rewriteImageTokensAfterRemove(index);
     await updateImageUrls();
     if (_images.isEmpty && _diaryController.text.trim().isEmpty && previousImageUrls.isEmpty) {
         await deleteDiary();
     }
+  }
+
+  List<String> _allImagePaths() {
+    return [
+      ...previousImageUrls,
+      ..._images.map((file) => file.path),
+    ];
+  }
+
+  void _insertImageTokenAtCursor(int imageIndex) {
+    final token = '[img:$imageIndex]';
+    final text = _diaryController.text;
+    final selection = _diaryController.selection;
+    if (!selection.isValid || selection.start < 0 || selection.end < 0) {
+      _diaryController.text = text.isEmpty ? token : '$text $token';
+      _diaryController.selection = TextSelection.fromPosition(
+        TextPosition(offset: _diaryController.text.length),
+      );
+      return;
+    }
+
+    final start = selection.start;
+    final end = selection.end;
+    final replacement = token;
+    final newText = text.replaceRange(start, end, replacement);
+    _diaryController.value = TextEditingValue(
+      text: newText,
+      selection: TextSelection.collapsed(offset: start + replacement.length),
+    );
+  }
+
+  void _rewriteImageTokensAfterRemove(int removedIndex) {
+    final original = _diaryController.text;
+    final rewritten = original.replaceAllMapped(_inlineImageTokenPattern, (match) {
+      final raw = match.group(1);
+      final parsed = int.tryParse(raw ?? '');
+      if (parsed == null) return match.group(0) ?? '';
+      if (parsed == removedIndex) return '';
+      if (parsed > removedIndex) return '[img:${parsed - 1}]';
+      return '[img:$parsed]';
+    });
+
+    if (rewritten == original) return;
+    _diaryController.value = _diaryController.value.copyWith(
+      text: rewritten,
+      selection: TextSelection.collapsed(
+        offset: rewritten.length.clamp(0, rewritten.length),
+      ),
+      composing: TextRange.empty,
+    );
+  }
+
+  InlineSpan _buildInlinePreviewSpan(String text, List<String> allPaths) {
+    final spans = <InlineSpan>[];
+    int cursor = 0;
+    for (final match in _inlineImageTokenPattern.allMatches(text)) {
+      if (match.start > cursor) {
+        spans.add(
+          TextSpan(
+            text: text.substring(cursor, match.start),
+            style: const TextStyle(fontSize: 16, color: Colors.black87),
+          ),
+        );
+      }
+
+      final index = int.tryParse(match.group(1) ?? '');
+      if (index != null && index >= 0 && index < allPaths.length) {
+        spans.add(
+          WidgetSpan(
+            alignment: PlaceholderAlignment.middle,
+            child: GestureDetector(
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => FullScreenImagePage(
+                      imageUrls: allPaths,
+                      initialIndex: index,
+                    ),
+                  ),
+                );
+              },
+              child: Container(
+                margin: const EdgeInsets.symmetric(horizontal: 2),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFEDEADE),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: const [
+                    Icon(Icons.photo, size: 14, color: Colors.black54),
+                    SizedBox(width: 4),
+                    Text(
+                      'image',
+                      style: TextStyle(fontSize: 12, color: Colors.black87),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      } else {
+        spans.add(
+          TextSpan(
+            text: match.group(0),
+            style: const TextStyle(fontSize: 16, color: Colors.black54),
+          ),
+        );
+      }
+      cursor = match.end;
+    }
+
+    if (cursor < text.length) {
+      spans.add(
+        TextSpan(
+          text: text.substring(cursor),
+          style: const TextStyle(fontSize: 16, color: Colors.black87),
+        ),
+      );
+    }
+
+    if (spans.isEmpty) {
+      spans.add(
+        const TextSpan(
+          text: '',
+          style: TextStyle(fontSize: 16, color: Colors.black87),
+        ),
+      );
+    }
+
+    return TextSpan(children: spans);
   }
 
 
@@ -503,6 +651,7 @@ class _NewDiaryState extends State<NewDiary> {
   }
 
   Container textfield(double containerHeight, double width) {
+    final allPaths = _allImagePaths();
     return Container(
       width: width,
       height: containerHeight,
@@ -571,17 +720,58 @@ class _NewDiaryState extends State<NewDiary> {
             color: Color(0xfff1e9d2),
           ),
           Expanded(
-            child: TextField(
-              controller: _diaryController,
-              maxLines: null,
-              expands: true,
-              decoration: InputDecoration(
-                hintText: "Write here...",
-                contentPadding: EdgeInsets.all(16),
-                border: InputBorder.none,
-              ),
+            child: Column(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _diaryController,
+                    maxLines: null,
+                    expands: true,
+                    decoration: InputDecoration(
+                      hintText: "Write here...",
+                      contentPadding: EdgeInsets.all(16),
+                      border: InputBorder.none,
+                    ),
+                  ),
+                ),
+                if (_diaryController.text.contains('[img:'))
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+                    decoration: const BoxDecoration(
+                      border: Border(
+                        top: BorderSide(color: Color(0xfff1e9d2), width: 1),
+                      ),
+                    ),
+                    child: SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: RichText(
+                        text: _buildInlinePreviewSpan(
+                          _diaryController.text,
+                          allPaths,
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
             ),
           ),
+          if (allPaths.isNotEmpty)
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.fromLTRB(12, 0, 12, 10),
+              child: Wrap(
+                spacing: 6,
+                runSpacing: 6,
+                children: List.generate(allPaths.length, (index) {
+                  return OutlinedButton.icon(
+                    onPressed: () => _insertImageTokenAtCursor(index),
+                    icon: const Icon(Icons.photo, size: 16),
+                    label: Text('Insert img ${index + 1}'),
+                  );
+                }),
+              ),
+            ),
         ],
       ),
     );

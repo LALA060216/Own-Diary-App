@@ -36,6 +36,8 @@ class _MomentBucket {
 }
 
 class _MomentStoryFrame {
+  final String diaryId;
+  final int imageIndexInDiary;
   final String imageUrl;
   final String title;
   final DateTime created;
@@ -43,6 +45,8 @@ class _MomentStoryFrame {
   final String categoryLabel;
 
   const _MomentStoryFrame({
+    required this.diaryId,
+    required this.imageIndexInDiary,
     required this.imageUrl,
     required this.title,
     required this.created,
@@ -54,10 +58,12 @@ class _MomentStoryFrame {
 class _MomentStoryPage extends StatefulWidget {
   final List<_MomentStoryFrame> frames;
   final int initialIndex;
+  final DiaryEntryModel? Function(_MomentStoryFrame frame)? resolveDiary;
 
   const _MomentStoryPage({
     required this.frames,
     this.initialIndex = 0,
+    this.resolveDiary,
   });
 
   @override
@@ -68,10 +74,10 @@ class _MomentStoryPageState extends State<_MomentStoryPage>
   with TickerProviderStateMixin {
   late final PageController _controller;
   late final AnimationController _progressController;
-  late final AnimationController _categoryTransitionController;
   int _index = 0;
   DateTime? _pressStartedAt;
   bool _isDraggingHorizontally = false;
+  bool _isOpeningDetails = false;
   double _horizontalDragDelta = 0;
   static const Duration _tapMaxDuration = Duration(milliseconds: 220);
   static const double _swipeDistanceThreshold = 40;
@@ -127,7 +133,6 @@ class _MomentStoryPageState extends State<_MomentStoryPage>
 
   void _jumpToCategory({required bool next}) {
     if (widget.frames.isEmpty) return;
-    if (_categoryTransitionController.isAnimating) return;
     final currentKey = widget.frames[_index].categoryKey;
     final orderedKeys = _orderedCategoryKeys();
     final currentCategoryIndex = orderedKeys.indexOf(currentKey);
@@ -169,17 +174,11 @@ class _MomentStoryPageState extends State<_MomentStoryPage>
           _next();
         }
       });
-    _categoryTransitionController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 250),
-      value: 1.0, // Start at 1.0 to avoid showing effect on initial load
-    );
     _restartProgress();
   }
 
   @override
   void dispose() {
-    _categoryTransitionController.dispose();
     _progressController.dispose();
     _controller.dispose();
     super.dispose();
@@ -202,6 +201,30 @@ class _MomentStoryPageState extends State<_MomentStoryPage>
       duration: const Duration(milliseconds: 180),
       curve: Curves.easeOut,
     );
+  }
+
+  Future<void> _openCurrentDiaryFromFrame() async {
+    if (_isOpeningDetails || widget.frames.isEmpty) return;
+    final resolver = widget.resolveDiary;
+    if (resolver == null) return;
+
+    final frame = widget.frames[_index];
+    final diary = resolver(frame);
+    if (diary == null || !mounted) return;
+
+    _isOpeningDetails = true;
+    _pauseProgress();
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => DetailsDiary(
+          diary: diary,
+          focusImageIndex: frame.imageIndexInDiary,
+        ),
+      ),
+    );
+    _isOpeningDetails = false;
+    _resumeProgress();
   }
 
   @override
@@ -272,9 +295,15 @@ class _MomentStoryPageState extends State<_MomentStoryPage>
                   _jumpToCategory(next: false); // Swipe right = go to previous category
                 }
               },
-              onVerticalDragEnd: (details) {
-                if (details.primaryVelocity != null && details.primaryVelocity! > 550) {
+              onVerticalDragEnd: (details) async {
+                final velocity = details.primaryVelocity;
+                if (velocity == null) return;
+                if (velocity > 550) {
                   Navigator.pop(context);
+                  return;
+                }
+                if (velocity < -550) {
+                  await _openCurrentDiaryFromFrame();
                 }
               },
               child: PageView.builder(
@@ -338,6 +367,27 @@ class _MomentStoryPageState extends State<_MomentStoryPage>
                     ],
                   );
                 },
+              ),
+            ),
+            Positioned(
+              left: 0,
+              right: 0,
+              top: 0,
+              child: IgnorePointer(
+                child: Container(
+                  height: 120,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        Colors.black.withValues(alpha: 0.35),
+                        Colors.black.withValues(alpha: 0.08),
+                        Colors.transparent,
+                      ],
+                    ),
+                  ),
+                ),
               ),
             ),
             Positioned(
@@ -428,24 +478,6 @@ class _DiariesState extends State<Diaries> {
     _MomentCategory(key: 'self_growth', label: 'Self Growth', icon: Icons.trending_up),
     _MomentCategory(key: 'moments', label: 'Moments', icon: Icons.auto_awesome),
   ];
-
-  static const Map<String, List<String>> _connectedMomentCategories = {
-    'food_buddy': ['family_time', 'friend_vibes', 'moments'],
-    'family_time': ['friend_vibes', 'moments'],
-    'friend_vibes': ['moments'],
-    'travel_memory': ['family_time', 'friend_vibes', 'moments'],
-    'study_day': ['self_growth', 'moments'],
-    'work_life': ['self_growth', 'moments'],
-    'fitness': ['self_growth', 'moments'],
-    'romance': ['moments'],
-    'pet_time': ['family_time', 'moments'],
-    'night_thoughts': ['moments'],
-    'music_movie': ['moments'],
-    'nature_walk': ['self_growth', 'moments'],
-    'self_growth': ['moments'],
-    'today_memory': ['moments'],
-    'moments': [],
-  };
 
   static const Map<String, List<String>> _categoryKeywords = {
     'food_buddy': ['food', 'meal', 'restaurant', 'cafe', 'dinner', 'lunch', 'breakfast', 'snack', 'cook', 'coffee'],
@@ -541,13 +573,6 @@ class _DiariesState extends State<Diaries> {
         });
       });
     }
-  }
-
-  String _guessMimeType(String imageUrl) {
-    final url = imageUrl.toLowerCase();
-    if (url.endsWith('.png')) return 'image/png';
-    if (url.endsWith('.webp')) return 'image/webp';
-    return 'image/jpeg';
   }
 
   /// Downloads image from URL, downscales to 512px, and compresses to JPEG
@@ -796,19 +821,9 @@ class _DiariesState extends State<Diaries> {
             continue;
           }
 
-          bool hasValidImage = false;
-          try {
-            for (final imageUrl in diary.imageUrls) {
-              if (imageUrl.trim().isNotEmpty) {
-                hasValidImage = true;
-                break;
-              }
-            }
-          } catch (_) {
-            hasValidImage = false;
+          if (!diary.imageUrls.any((imageUrl) => imageUrl.trim().isNotEmpty)) {
+            continue;
           }
-
-          if (!hasValidImage) continue;
 
           candidates.add(diary);
           if (candidates.length >= 12) break;
@@ -882,9 +897,14 @@ class _DiariesState extends State<Diaries> {
       final key = _resolveMomentKey(diary);
       final categoryLabel = categoryByKey[key]?.label ?? 'Moments';
       final frames = buckets.putIfAbsent(key, () => []);
-      for (final imageUrl in diary.imageUrls.where((u) => u.trim().isNotEmpty)) {
+      for (final entry in diary.imageUrls.asMap().entries) {
+        final imageIndex = entry.key;
+        final imageUrl = entry.value;
+        if (imageUrl.trim().isEmpty) continue;
         frames.add(
           _MomentStoryFrame(
+            diaryId: diary.id,
+            imageIndexInDiary: imageIndex,
             imageUrl: imageUrl,
             title: diary.title,
             created: diary.created,
@@ -902,40 +922,6 @@ class _DiariesState extends State<Diaries> {
       result.add(_MomentBucket(category: category, frames: frameList));
     }
     return result;
-  }
-
-  List<_MomentStoryFrame> _buildConnectedStoryFrames(
-    String startCategoryKey,
-    List<_MomentBucket> buckets,
-  ) {
-    final framesByCategory = {
-      for (final bucket in buckets) bucket.category.key: bucket.frames,
-    };
-
-    final orderedKeys = <String>[];
-    final visited = <String>{};
-
-    void addCategoryAndConnections(String key) {
-      if (visited.contains(key)) return;
-      visited.add(key);
-      orderedKeys.add(key);
-      final nextKeys = _connectedMomentCategories[key] ?? const <String>[];
-      for (final nextKey in nextKeys) {
-        addCategoryAndConnections(nextKey);
-      }
-    }
-
-    addCategoryAndConnections(startCategoryKey);
-
-    final connectedFrames = <_MomentStoryFrame>[];
-    for (final key in orderedKeys) {
-      final frames = framesByCategory[key];
-      if (frames == null || frames.isEmpty) continue;
-      connectedFrames.addAll(frames);
-    }
-
-    if (connectedFrames.isNotEmpty) return connectedFrames;
-    return framesByCategory[startCategoryKey] ?? const <_MomentStoryFrame>[];
   }
 
   void previousMonth() {
@@ -997,12 +983,13 @@ class _DiariesState extends State<Diaries> {
   }
 
   List<DiaryEntryModel> _applyDiaryFilters(List<DiaryEntryModel> allDiaries) {
+    final normalizedTitleQuery = titleQuery.toLowerCase();
     return allDiaries.where((d) {
       final hasBody = d.context.trim().isNotEmpty;
       final hasImages = d.imageUrls.isNotEmpty;
       final hasSavableContent = hasBody || hasImages;
-      final titleMatches = titleQuery.isEmpty ||
-          d.title.toLowerCase().contains(titleQuery.toLowerCase());
+      final titleMatches = normalizedTitleQuery.isEmpty ||
+          d.title.toLowerCase().contains(normalizedTitleQuery);
       final monthMatches = selectedDay == null
           ? (d.created.month == selectedDate.month &&
               d.created.year == selectedDate.year)
@@ -1012,6 +999,15 @@ class _DiariesState extends State<Diaries> {
           : true;
         return monthMatches && hasSavableContent && titleMatches && dateMatches;
     }).toList();
+  }
+
+  DiaryEntryModel? _resolveDiaryForFrame(_MomentStoryFrame frame) {
+    for (final diary in _allDiaries) {
+      if (diary.id == frame.diaryId) {
+        return diary;
+      }
+    }
+    return null;
   }
 
   @override
@@ -1192,6 +1188,7 @@ Future<bool?> showDeleteConfirmationDialog(BuildContext context) {
                                     builder: (_) => _MomentStoryPage(
                                       frames: allFrames,
                                       initialIndex: startIndex >= 0 ? startIndex : 0,
+                                      resolveDiary: _resolveDiaryForFrame,
                                     ),
                                   ),
                                 );
@@ -1261,14 +1258,10 @@ Future<bool?> showDeleteConfirmationDialog(BuildContext context) {
                 icon: Icon(isSearchOpen ? Icons.close : Icons.search),
                 onPressed: () {
                   if (isSearchOpen) {
-                    _isProgrammaticSearchUpdate = true;
-                    _searchController.clear();
-                    _isProgrammaticSearchUpdate = false;
+                    _clearAllFilters();
                     if (!mounted) return;
                     _safeSetState(() {
                       isSearchOpen = false;
-                      titleQuery = '';
-                      selectedDay = null;
                     });
                   } else {
                     _safeSetState(() {
