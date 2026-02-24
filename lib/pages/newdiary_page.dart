@@ -65,6 +65,7 @@ class _NewDiaryState extends State<NewDiary> {
   bool _isApplyingAiTitle = false;
   bool _isTitleManuallyEdited = false;
   bool _isDisposed = false;
+  bool _isImageLimitCooldown = false;
 
   // initialize controller listenable
   @override
@@ -330,6 +331,17 @@ class _NewDiaryState extends State<NewDiary> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Maximum $_maxImagesPerDiary images per diary')),
       );
+      // Set cooldown to prevent spam clicking
+      setState(() {
+        _isImageLimitCooldown = true;
+      });
+      Future.delayed(const Duration(seconds: 2), () {
+        if (mounted) {
+          setState(() {
+            _isImageLimitCooldown = false;
+          });
+        }
+      });
       return;
     }
     
@@ -366,6 +378,17 @@ class _NewDiaryState extends State<NewDiary> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Maximum $_maxImagesPerDiary images per diary')),
       );
+      // Set cooldown to prevent spam clicking
+      setState(() {
+        _isImageLimitCooldown = true;
+      });
+      Future.delayed(const Duration(seconds: 2), () {
+        if (mounted) {
+          setState(() {
+            _isImageLimitCooldown = false;
+          });
+        }
+      });
       return;
     }
     
@@ -660,13 +683,7 @@ class _NewDiaryState extends State<NewDiary> {
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
                 GestureDetector(
-                  onTap: () {
-                    final currentImageCount = previousImageUrls.length + _images.length;
-                    if (currentImageCount >= _maxImagesPerDiary) {
-                      return;
-                    }
-                    pickImages();
-                  },
+                  onTap: _isImageLimitCooldown ? null : pickImages,
                   child: Icon(Icons.add),
                 ),
                 Divider(
@@ -675,13 +692,7 @@ class _NewDiaryState extends State<NewDiary> {
                   color: Color(0xffEDEADE),
                 ),
                 GestureDetector(
-                  onTap: () {
-                    final currentImageCount = previousImageUrls.length + _images.length;
-                    if (currentImageCount >= _maxImagesPerDiary) {
-                      return;
-                    }
-                    openCameraPageAndUpload();
-                  },
+                  onTap: _isImageLimitCooldown ? null : openCameraPageAndUpload,
                   child: Icon(Icons.camera_alt, size: 30, color: Colors.black54),
                 )
               ],
