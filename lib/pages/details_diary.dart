@@ -6,7 +6,10 @@ import 'package:intl/intl.dart';
 
 import '../services/firebase_storage_service.dart';
 import '../services/firestore_service.dart';
+import '../services/gemini_service.dart';
+import '../services/models/ai_chat_model.dart';
 import '../services/models/diary_entry_model.dart';
+import 'ai_content_options_dialog.dart';
 import 'full_screen_image_page.dart';
 
 class DetailsDiary extends StatefulWidget {
@@ -41,6 +44,7 @@ class _DetailsDiaryState extends State<DetailsDiary> {
 
   bool _isEditing = false;
   bool _isSaving = false;
+  bool _isGeneratingDiaryContent = false;
   bool _didAutoScrollToFocusToken = false;
   int _focusScrollAttempt = 0;
   bool _highlightFocusToken = false;
@@ -274,6 +278,94 @@ class _DetailsDiaryState extends State<DetailsDiary> {
         });
       }
     }
+  }
+
+  Future<void> _showAiOptionsAndGenerate() async {
+    if (_isGeneratingDiaryContent) return;
+
+    final options = await showDialog<AiContentOptions>(
+      context: context,
+      builder: (_) => AiContentOptionsDialog(
+        currentTitle: _titleController.text,
+        currentContext: _contextController.text,
+      ),
+    );
+
+    if (options == null || !mounted) return;
+
+    setState(() {
+      _isGeneratingDiaryContent = true;
+    });
+
+    try {
+      String generated;
+      String? imageDescription;
+      
+      // Step 1: If user wants photo context, first get image description
+      if (options.photoIsImportant && (_imageUrls.isNotEmpty || _newImages.isNotEmpty)) {
+        final imageSource = <String>[
+          ..._imageUrls,
+          ..._newImages.map((file) => file.path),
+        ];
+        
+        const imgDescriptionPrompt = 
+            'You are describing an image for a personal diary entry. '
+            'Describe what you see in natural, flowing language as if telling a friend. '
+            'Focus on: what objects/people are in the image, the setting, colors, mood, and atmosphere. '
+            'Use complete sentences and descriptive words. '
+            'DO NOT use category labels like "food_buddy", "study_day", "funny_moment" etc. '
+            'DO NOT output single words or classifications. '
+            'Write 2-4 sentences describing the scene naturally. '
+            'Example: "A plate of colorful pasta sits on a wooden table with a glass of red wine beside it. '
+            'Warm afternoon sunlight streams through a nearby window, creating soft shadows."';
+        
+        final chatModelForDescription = AIChatModel(
+          prompt: imgDescriptionPrompt,
+          model: 'gemini-2.0-flash-exp',
+        );
+        
+        imageDescription = await GeminiService(chatModel: chatModelForDescription)
+          .classifyDiaryImage(imageSource);
+        
+        // Clean the image description
+        imageDescription = imageDescription.trim();
+        if (imageDescription.startsWith('Error:')) {
+          imageDescription = null;
+        }
+      }
+      
+      // Step 2: Generate diary content with or without image description
+      final promptInput = options.buildPrompt(imageDescription: imageDescription);
+      final chatModelForGeneration = AIChatModel(
+        prompt: 'You are a helpful diary writing assistant.',
+        model: 'gemma-3-27b-it',
+      );
+
+      generated = await GeminiService(chatModel: chatModelForGeneration).sendMessage(promptInput);
+
+      final aiText = _sanitizeGeneratedContent(generated);
+      if (aiText.isEmpty) return;
+
+      _contextController.text = aiText;
+      _contextController.selection = TextSelection.fromPosition(
+        TextPosition(offset: _contextController.text.length),
+      );
+    } finally {
+      if (!mounted) return;
+      setState(() {
+        _isGeneratingDiaryContent = false;
+      });
+    }
+  }
+
+  String _sanitizeGeneratedContent(String rawText) {
+    var cleaned = rawText.trim();
+    if (cleaned.startsWith('Error:')) return '';
+    cleaned = cleaned
+        .replaceAll(RegExp(r'```[\s\S]*?```'), '')
+        .replaceAll(RegExp(r'^#+\s*', multiLine: true), '')
+        .trim();
+    return cleaned;
   }
 
   InlineSpan _buildInlineContextSpan(String text) {
@@ -640,21 +732,36 @@ class _DetailsDiaryState extends State<DetailsDiary> {
           Container(
             padding: const EdgeInsets.all(16),
             child: Row(
-              mainAxisAlignment: MainAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text(
-                  'Date: ',
-                  style: TextStyle(
-                    fontSize: 16,
-                    color: Colors.black87,
-                  ),
+                Row(
+                  children: [
+                    const Text(
+                      'Date: ',
+                      style: TextStyle(
+                        fontSize: 16,
+                        color: Colors.black87,
+                      ),
+                    ),
+                    Text(
+                      DateFormat('yyyy-MM-dd').format(widget.diary.created),
+                      style: const TextStyle(
+                        fontSize: 16,
+                        color: Colors.black87,
+                      ),
+                    ),
+                  ],
                 ),
-                Text(
-                  DateFormat('yyyy-MM-dd').format(widget.diary.created),
-                  style: const TextStyle(
-                    fontSize: 16,
-                    color: Colors.black87,
-                  ),
+                TextButton.icon(
+                  onPressed: (_isGeneratingDiaryContent || _isSaving) ? null : _showAiOptionsAndGenerate,
+                  icon: _isGeneratingDiaryContent
+                      ? const SizedBox(
+                          width: 14,
+                          height: 14,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.auto_awesome, size: 16),
+                  label: Text(_isGeneratingDiaryContent ? 'Generating...' : _isSaving ? 'Saving...' : 'AI Draft'),
                 ),
               ],
             ),

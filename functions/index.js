@@ -18,7 +18,7 @@ exports.classifyDiaryImage = onRequest(
     {secrets: [GEMINI_API_KEY]},
     async (req, res) => {
       try {
-        const {imageData, mimeType} = req.body;
+        const {imageData, prompt, model:modelName, mimeType} = req.body;
 
         if (!imageData || typeof imageData !== "string") {
           return res.status(400).json({
@@ -27,24 +27,10 @@ exports.classifyDiaryImage = onRequest(
         }
 
         const genAI = initializeGemini(GEMINI_API_KEY.value());
-        const model = genAI.getGenerativeModel({
-          model: "gemini-2.5-flash",
-        });
+        const model = genAI.getGenerativeModel({model: modelName || "gemini-2.5-flash",});
 
         const base64Image = imageData;
         const contentType = mimeType || "image/jpeg";
-
-        // Classification prompt
-        const classificationPrompt = (
-          "You are an image classifier for diary moments. " +
-            "Look at the image and classify what you see. " +
-            "Return exactly ONE category from: " +
-            "food_buddy, funny_moment, travel_memory, study_day, " +
-            "work_life, fitness, family_time, friend_vibes, romance, " +
-            "pet_time, night_thoughts, music_movie, nature_walk, " +
-            "self_growth, or moments. Be confident. " +
-            "Output only the category key, no explanation."
-        );
 
         // Classify the image using Gemini
         const response = await model.generateContent([
@@ -55,7 +41,7 @@ exports.classifyDiaryImage = onRequest(
             },
           },
           {
-            text: classificationPrompt,
+            text: prompt,
           },
         ]);
 

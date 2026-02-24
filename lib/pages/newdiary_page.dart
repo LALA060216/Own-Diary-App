@@ -1,16 +1,18 @@
-import 'dart:convert';
 import 'dart:async';
+import 'dart:convert';
+import 'dart:io';
+
 import 'package:diaryapp/bottom_menu.dart';
+import 'package:diaryapp/services/firebase_storage_service.dart';
 import 'package:diaryapp/services/firestore_service.dart';
 import 'package:diaryapp/services/gemini_service.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'dart:io';
-import 'package:image_picker/image_picker.dart';
-import 'package:flutter/material.dart';
-import 'package:diaryapp/services/firebase_storage_service.dart';
-import 'full_screen_image_page.dart';
 import 'package:diaryapp/services/models/ai_chat_model.dart';
-// 魔丸
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
+
+import 'ai_content_options_dialog.dart';
+import 'full_screen_image_page.dart';
 
 class NewDiary extends StatefulWidget{
   final XFile? imageFile;
@@ -34,24 +36,19 @@ class _NewDiaryState extends State<NewDiary> {
   final _firebaseStorageService = FirebaseStorageService();
   final _userId = FirebaseAuth.instance.currentUser!.uid;
 
-
-  
-  
   final DateTime date = DateTime.now();
+  final TextEditingController _diaryController = TextEditingController();
+  final TextEditingController _titleController = TextEditingController();
+
   bool isLoading = false;
   List<String> imageUrls = [];
   List<File> pickedImages = [];
-  String _id =  '';
+  String _id = '';
   bool cam = false;
   bool created = false;
   List<String> previousImageUrls = [];
-  
-
-
-  final TextEditingController _diaryController = TextEditingController();
   bool error = false;
-  String errorMessage = "Failed to upload image";
-  final TextEditingController _titleController = TextEditingController();
+  String errorMessage = 'Failed to upload image';
   final chatModel = AIChatModel(
       prompt: 'You are a helpful assistant that generates keywords based on the diary entry. Extract between 1 to 5 numbers of keywords from the following diary entry and return them ONLY as a JSON array of strings with no additional text or explanation. Example format: ["keyword1", "keyword2", "keyword3", "keyword4", "keyword5"]\nIf have any forbidden content, just return a empty list\n',
       model: 'gemma-3-27b-it'
@@ -60,10 +57,7 @@ class _NewDiaryState extends State<NewDiary> {
       prompt: 'Generate one short diary title based on the diary content. Keep it natural, specific, and between 3 to 8 words. Return ONLY the title text without quotes, labels, markdown, or extra explanation.',
       model: 'gemma-3-27b-it'
     );
-  final contentChatModel = AIChatModel(
-      prompt: 'You are a diary writing assistant. Generate a natural first-person diary entry draft between 120 and 220 words. Keep the tone personal, reflective, and simple. Do not use markdown, bullet points, or headings. Return only the diary text.',
-      model: 'gemma-3-27b-it'
-    );
+
   Timer? _titleDebounceTimer;
   bool _isGeneratingTitle = false;
   bool _isGeneratingDiaryContent = false;
@@ -92,7 +86,6 @@ class _NewDiaryState extends State<NewDiary> {
       }
     });
 
-    
     _id = widget.diaryId ?? '';
     if (widget.previousDiaryController != null) {
       _diaryController.text = widget.previousDiaryController!.text;
@@ -130,7 +123,6 @@ class _NewDiaryState extends State<NewDiary> {
         // Ignore listener-driven transient failures.
       }
     });
-      
   }
 
   void _scheduleAiTitleGeneration() {
@@ -183,7 +175,86 @@ class _NewDiaryState extends State<NewDiary> {
     }
   }
 
-  String _sanitizeGeneratedDiaryContent(String rawText) {
+  Future<void> _showAiOptionsAndGenerate() async {
+    if (_isGeneratingDiaryContent) return;
+
+    final options = await showDialog<AiContentOptions>(
+      context: context,
+      builder: (_) => AiContentOptionsDialog(
+        currentTitle: _titleController.text,
+        currentContext: _diaryController.text,
+      ),
+    );
+
+    if (options == null || !mounted) return;
+
+    setState(() {
+      _isGeneratingDiaryContent = true;
+    });
+
+    try {
+      String generated;
+      String? imageDescription;
+      
+      // Step 1: If user wants photo context, first get image description
+      if (options.photoIsImportant && (_images.isNotEmpty || imageUrls.isNotEmpty || previousImageUrls.isNotEmpty)) {
+        final imageSource = <String>[
+          ..._images.map((file) => file.path),
+          ...imageUrls,
+          ...previousImageUrls,
+        ];
+      
+      const imgDescriptionPrompt = 
+          'You are describing an image for a personal diary entry. '
+          'Describe what you see in natural, flowing language as if telling a friend. '
+          'Focus on: what objects/people are in the image, the setting, colors, mood, and atmosphere. '
+          'Use complete sentences and descriptive words. '
+          'DO NOT use category labels like "food_buddy", "study_day", "funny_moment" etc. '
+          'DO NOT output single words or classifications. '
+          'Write 2-4 sentences describing the scene naturally. '
+          'Example: "A plate of colorful pasta sits on a wooden table with a glass of red wine beside it. '
+          'Warm afternoon sunlight streams through a nearby window, creating soft shadows."';
+        
+        final chatModelForDescription = AIChatModel(
+          prompt: imgDescriptionPrompt,
+          model: 'gemini-2.5-flash',
+        );
+        
+        imageDescription = await GeminiService(chatModel: chatModelForDescription)
+          .classifyDiaryImage(imageSource);
+        
+        // Clean the image description
+        imageDescription = imageDescription.trim();
+        if (imageDescription.startsWith('Error:')) {
+          imageDescription = null;
+        }
+      }
+      
+      // Step 2: Generate diary content with or without image description
+      final promptInput = options.buildPrompt(imageDescription: imageDescription);
+      final chatModelForGeneration = AIChatModel(
+        prompt: promptInput,
+        model: 'gemini-2.5-flash',
+      );
+
+      generated = await GeminiService(chatModel: chatModelForGeneration).sendMessage(promptInput);
+
+      final aiText = _sanitizeGeneratedContent(generated);
+      if (aiText.isEmpty) return;
+
+      _diaryController.text = aiText;
+      _diaryController.selection = TextSelection.fromPosition(
+        TextPosition(offset: _diaryController.text.length),
+      );
+    } finally {
+      if (!mounted) return;
+      setState(() {
+        _isGeneratingDiaryContent = false;
+      });
+    }
+  }
+
+  String _sanitizeGeneratedContent(String rawText) {
     var cleaned = rawText.trim();
     if (cleaned.startsWith('Error:')) return '';
     cleaned = cleaned
@@ -193,55 +264,8 @@ class _NewDiaryState extends State<NewDiary> {
     return cleaned;
   }
 
-  Future<void> _generateAiDiaryContent() async {
-    if (_isGeneratingDiaryContent) return;
-    final currentTitle = _titleController.text.trim();
-    final currentContext = _diaryController.text.trim();
-
-    if (currentTitle.isEmpty && currentContext.isEmpty) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Add a title or a few words first.')),
-      );
-      return;
-    }
-
-    setState(() {
-      _isGeneratingDiaryContent = true;
-    });
-
-    try {
-      final promptInput = '''
-Title: ${currentTitle.isEmpty ? 'Not provided' : currentTitle}
-Current draft: ${currentContext.isEmpty ? 'Not provided' : currentContext}
-
-Generate a polished diary draft based on the details above.
-''';
-
-      final generated = await GeminiService(chatModel: contentChatModel).sendMessage(promptInput);
-      final aiText = _sanitizeGeneratedDiaryContent(generated);
-      if (aiText.isEmpty) return;
-
-      final mergedText = currentContext.isEmpty
-          ? aiText
-          : '$currentContext\n\n$aiText';
-
-      _diaryController.text = mergedText;
-      _diaryController.selection = TextSelection.fromPosition(
-        TextPosition(offset: _diaryController.text.length),
-      );
-      if (!mounted) return;
-      setState(() {});
-    } finally {
-      if (!mounted) return;
-      setState(() {
-        _isGeneratingDiaryContent = false;
-      });
-    }
-  }
-
-
   //---------------------- Diary Creation and Delete ------------------//
+
   Future<void> deleteDiary() async {
     if (_id.isEmpty) return;
     await _firestoreService.deleteDiaryEntry(_id, _userId);
@@ -258,7 +282,6 @@ Generate a polished diary draft based on the details above.
     if (_images.isEmpty && _diaryController.text.trim().isEmpty) return;
     created = true;
     await createNewDiary();
-    
   }
 
   Future<void> createDiaryFromCam() async {
@@ -283,10 +306,8 @@ Generate a polished diary draft based on the details above.
     }
   }
 
-
-
   //---------------------- Diary Update and Image Upload ------------------//
-  
+
   Future<void> aupdateDiary(String context) async {
     if (_images.isNotEmpty && _id.isNotEmpty || _diaryController.text.trim().isNotEmpty && _id.isNotEmpty) {
       try {
@@ -445,89 +466,6 @@ Generate a polished diary draft based on the details above.
       composing: TextRange.empty,
     );
   }
-
-  InlineSpan _buildInlinePreviewSpan(String text, List<String> allPaths) {
-    final spans = <InlineSpan>[];
-    int cursor = 0;
-    for (final match in _inlineImageTokenPattern.allMatches(text)) {
-      if (match.start > cursor) {
-        spans.add(
-          TextSpan(
-            text: text.substring(cursor, match.start),
-            style: const TextStyle(fontSize: 16, color: Colors.black87),
-          ),
-        );
-      }
-
-      final index = int.tryParse(match.group(1) ?? '');
-      if (index != null && index >= 0 && index < allPaths.length) {
-        spans.add(
-          WidgetSpan(
-            alignment: PlaceholderAlignment.middle,
-            child: GestureDetector(
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => FullScreenImagePage(
-                      imageUrls: allPaths,
-                      initialIndex: index,
-                    ),
-                  ),
-                );
-              },
-              child: Container(
-                margin: const EdgeInsets.symmetric(horizontal: 2),
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFEDEADE),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: const [
-                    Text(
-                      'image',
-                      style: TextStyle(fontSize: 12, color: Colors.black87),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        );
-      } else {
-        spans.add(
-          TextSpan(
-            text: match.group(0),
-            style: const TextStyle(fontSize: 16, color: Colors.black54),
-          ),
-        );
-      }
-      cursor = match.end;
-    }
-
-    if (cursor < text.length) {
-      spans.add(
-        TextSpan(
-          text: text.substring(cursor),
-          style: const TextStyle(fontSize: 16, color: Colors.black87),
-        ),
-      );
-    }
-
-    if (spans.isEmpty) {
-      spans.add(
-        const TextSpan(
-          text: '',
-          style: TextStyle(fontSize: 16, color: Colors.black87),
-        ),
-      );
-    }
-
-    return TextSpan(children: spans);
-  }
-
 
 
   @override
@@ -778,7 +716,7 @@ Generate a polished diary draft based on the details above.
                   ],
                 ),
                 TextButton.icon(
-                  onPressed: _isGeneratingDiaryContent ? null : _generateAiDiaryContent,
+                  onPressed: (_isGeneratingDiaryContent || isLoading) ? null : _showAiOptionsAndGenerate,
                   icon: _isGeneratingDiaryContent
                       ? const SizedBox(
                           width: 14,
@@ -786,7 +724,7 @@ Generate a polished diary draft based on the details above.
                           child: CircularProgressIndicator(strokeWidth: 2),
                         )
                       : const Icon(Icons.auto_awesome, size: 16),
-                  label: Text(_isGeneratingDiaryContent ? 'Generating...' : 'AI Draft'),
+                  label: Text(_isGeneratingDiaryContent ? 'Generating...' : isLoading ? 'Uploading...' : 'AI Draft'),
                 ),
               ],
             ),

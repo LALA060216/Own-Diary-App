@@ -7,6 +7,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/intl.dart';
 import '../services/firestore_service.dart';
 import '../services/gemini_service.dart';
+import '../services/models/ai_chat_model.dart';
 import '../services/models/diary_entry_model.dart';
 import 'details_diary.dart';
 
@@ -699,7 +700,13 @@ class _DiariesState extends State<Diaries> {
   Future<String> _classifyMomentFromImageOnly(DiaryEntryModel diary) async {
     if (diary.imageUrls.isEmpty) return 'moments';
 
-    final rawText = await GeminiService.classifyImageMoment(diary.imageUrls);
+    final imageClassifierModel = AIChatModel(
+      prompt: GeminiService.classificationPrompt,
+      model: 'gemini-2.5-flash',
+    );
+
+    final rawText = await GeminiService(chatModel: imageClassifierModel)
+        .classifyDiaryImage(diary.imageUrls);
     if (rawText.trim().isEmpty) {
       print('AI classification empty response for diary ${diary.id}');
       return 'moments';
