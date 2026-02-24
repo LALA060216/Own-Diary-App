@@ -1,16 +1,18 @@
-import 'dart:convert';
 import 'dart:async';
+import 'dart:convert';
+import 'dart:io';
+
 import 'package:diaryapp/bottom_menu.dart';
+import 'package:diaryapp/services/firebase_storage_service.dart';
 import 'package:diaryapp/services/firestore_service.dart';
 import 'package:diaryapp/services/gemini_service.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'dart:io';
-import 'package:image_picker/image_picker.dart';
-import 'package:flutter/material.dart';
-import 'package:diaryapp/services/firebase_storage_service.dart';
-import 'full_screen_image_page.dart';
 import 'package:diaryapp/services/models/ai_chat_model.dart';
-// 魔丸
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
+
+import 'ai_content_options_dialog.dart';
+import 'full_screen_image_page.dart';
 
 class NewDiary extends StatefulWidget{
   final XFile? imageFile;
@@ -26,6 +28,7 @@ class NewDiary extends StatefulWidget{
 
 class _NewDiaryState extends State<NewDiary> {
   static final RegExp _inlineImageTokenPattern = RegExp(r'\[img:(\d+)\]');
+  static const int _maxImagesPerDiary = 3;
 
   final List<File> _images = [];
   final ImagePicker _picker = ImagePicker();
@@ -34,24 +37,19 @@ class _NewDiaryState extends State<NewDiary> {
   final _firebaseStorageService = FirebaseStorageService();
   final _userId = FirebaseAuth.instance.currentUser!.uid;
 
-
-  
-  
   final DateTime date = DateTime.now();
+  final TextEditingController _diaryController = TextEditingController();
+  final TextEditingController _titleController = TextEditingController();
+
   bool isLoading = false;
   List<String> imageUrls = [];
   List<File> pickedImages = [];
-  String _id =  '';
+  String _id = '';
   bool cam = false;
   bool created = false;
   List<String> previousImageUrls = [];
-  
-
-
-  final TextEditingController _diaryController = TextEditingController();
   bool error = false;
-  String errorMessage = "Failed to upload image";
-  final TextEditingController _titleController = TextEditingController();
+  String errorMessage = 'Failed to upload image';
   final chatModel = AIChatModel(
       prompt: 'You are a helpful assistant that generates keywords based on the diary entry. Extract between 1 to 5 numbers of keywords from the following diary entry and return them ONLY as a JSON array of strings with no additional text or explanation. Example format: ["keyword1", "keyword2", "keyword3", "keyword4", "keyword5"]\nIf have any forbidden content, just return a empty list\n',
       model: 'gemma-3-27b-it'
@@ -60,11 +58,14 @@ class _NewDiaryState extends State<NewDiary> {
       prompt: 'Generate one short diary title based on the diary content. Keep it natural, specific, and between 3 to 8 words. Return ONLY the title text without quotes, labels, markdown, or extra explanation.',
       model: 'gemma-3-27b-it'
     );
+
   Timer? _titleDebounceTimer;
   bool _isGeneratingTitle = false;
+  bool _isGeneratingDiaryContent = false;
   bool _isApplyingAiTitle = false;
   bool _isTitleManuallyEdited = false;
   bool _isDisposed = false;
+  bool _isImageLimitCooldown = false;
 
   // initialize controller listenable
   @override
@@ -87,7 +88,6 @@ class _NewDiaryState extends State<NewDiary> {
       }
     });
 
-    
     _id = widget.diaryId ?? '';
     if (widget.previousDiaryController != null) {
       _diaryController.text = widget.previousDiaryController!.text;
@@ -125,7 +125,6 @@ class _NewDiaryState extends State<NewDiary> {
         // Ignore listener-driven transient failures.
       }
     });
-      
   }
 
   void _scheduleAiTitleGeneration() {
@@ -178,8 +177,97 @@ class _NewDiaryState extends State<NewDiary> {
     }
   }
 
+  Future<void> _showAiOptionsAndGenerate() async {
+    if (_isGeneratingDiaryContent) return;
+
+    final options = await showDialog<AiContentOptions>(
+      context: context,
+      builder: (_) => AiContentOptionsDialog(
+        currentTitle: _titleController.text,
+        currentContext: _diaryController.text,
+      ),
+    );
+
+    if (options == null || !mounted) return;
+
+    setState(() {
+      _isGeneratingDiaryContent = true;
+    });
+
+    try {
+      String generated;
+      String? imageDescription;
+      
+      // Step 1: If user wants photo context, first get image description
+      if (options.photoIsImportant && (_images.isNotEmpty || imageUrls.isNotEmpty || previousImageUrls.isNotEmpty)) {
+        final imageSource = <String>[
+          ..._images.map((file) => file.path),
+          ...imageUrls,
+          ...previousImageUrls,
+        ];
+      
+      const imgDescriptionPrompt = 
+          'You are describing an image for a personal diary entry. '
+          'Describe what you see in natural, flowing language as if telling a friend. '
+          'Focus on: what objects/people are in the image, the setting, colors, mood, and atmosphere. '
+          'Use complete sentences and descriptive words. '
+          'DO NOT use category labels like "food_buddy", "study_day", "funny_moment" etc. '
+          'DO NOT output single words or classifications. '
+          'Write 2-4 sentences describing the scene naturally. '
+          'Example: "A plate of colorful pasta sits on a wooden table with a glass of red wine beside it. '
+          'Warm afternoon sunlight streams through a nearby window, creating soft shadows."';
+        
+        final chatModelForDescription = AIChatModel(
+          prompt: imgDescriptionPrompt,
+          model: 'gemini-2.5-flash',
+        );
+        
+        imageDescription = await GeminiService(chatModel: chatModelForDescription)
+          .classifyDiaryImage(imageSource);
+        
+        // Clean the image description
+        imageDescription = imageDescription.trim();
+        if (imageDescription.startsWith('Error:')) {
+          imageDescription = null;
+        }
+      }
+      
+      // Step 2: Generate diary content with or without image description
+      final promptInput = options.buildPrompt(imageDescription: imageDescription);
+      final chatModelForGeneration = AIChatModel(
+        prompt: promptInput,
+        model: 'gemini-2.5-flash',
+      );
+
+      generated = await GeminiService(chatModel: chatModelForGeneration).sendMessage(promptInput);
+
+      final aiText = _sanitizeGeneratedContent(generated);
+      if (aiText.isEmpty) return;
+
+      _diaryController.text = aiText;
+      _diaryController.selection = TextSelection.fromPosition(
+        TextPosition(offset: _diaryController.text.length),
+      );
+    } finally {
+      if (!mounted) return;
+      setState(() {
+        _isGeneratingDiaryContent = false;
+      });
+    }
+  }
+
+  String _sanitizeGeneratedContent(String rawText) {
+    var cleaned = rawText.trim();
+    if (cleaned.startsWith('Error:')) return '';
+    cleaned = cleaned
+        .replaceAll(RegExp(r'```[\s\S]*?```'), '')
+        .replaceAll(RegExp(r'^#+\s*', multiLine: true), '')
+        .trim();
+    return cleaned;
+  }
 
   //---------------------- Diary Creation and Delete ------------------//
+
   Future<void> deleteDiary() async {
     if (_id.isEmpty) return;
     await _firestoreService.deleteDiaryEntry(_id, _userId);
@@ -196,7 +284,6 @@ class _NewDiaryState extends State<NewDiary> {
     if (_images.isEmpty && _diaryController.text.trim().isEmpty) return;
     created = true;
     await createNewDiary();
-    
   }
 
   Future<void> createDiaryFromCam() async {
@@ -221,10 +308,8 @@ class _NewDiaryState extends State<NewDiary> {
     }
   }
 
-
-
   //---------------------- Diary Update and Image Upload ------------------//
-  
+
   Future<void> aupdateDiary(String context) async {
     if (_images.isNotEmpty && _id.isNotEmpty || _diaryController.text.trim().isNotEmpty && _id.isNotEmpty) {
       try {
@@ -239,10 +324,41 @@ class _NewDiaryState extends State<NewDiary> {
   }
 
   Future<void> pickImages() async {
+    final currentImageCount = previousImageUrls.length + _images.length;
+    
+    if (currentImageCount >= _maxImagesPerDiary) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Maximum $_maxImagesPerDiary images per diary')),
+      );
+      // Set cooldown to prevent spam clicking
+      setState(() {
+        _isImageLimitCooldown = true;
+      });
+      Future.delayed(const Duration(seconds: 2), () {
+        if (mounted) {
+          setState(() {
+            _isImageLimitCooldown = false;
+          });
+        }
+      });
+      return;
+    }
+    
     final List<XFile> pickedFiles = await _picker.pickMultiImage();
     if (pickedFiles.isEmpty) return;
+    
+    final remainingSlots = _maxImagesPerDiary - currentImageCount;
+    final filesToAdd = pickedFiles.take(remainingSlots).toList();
+    
+    if (pickedFiles.length > remainingSlots && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Only $remainingSlots more image(s) allowed (max $_maxImagesPerDiary per diary)')),
+      );
+    }
+    
     final startIndex = previousImageUrls.length + _images.length;
-    final picked = pickedFiles.map((file) => File(file.path)).toList();
+    final picked = filesToAdd.map((file) => File(file.path)).toList();
     if (!mounted) return;
     setState(() {
       _images.addAll(picked);
@@ -255,6 +371,27 @@ class _NewDiaryState extends State<NewDiary> {
   }
 
   Future<void> openCameraPageAndUpload() async {
+    final currentImageCount = previousImageUrls.length + _images.length;
+    
+    if (currentImageCount >= _maxImagesPerDiary) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Maximum $_maxImagesPerDiary images per diary')),
+      );
+      // Set cooldown to prevent spam clicking
+      setState(() {
+        _isImageLimitCooldown = true;
+      });
+      Future.delayed(const Duration(seconds: 2), () {
+        if (mounted) {
+          setState(() {
+            _isImageLimitCooldown = false;
+          });
+        }
+      });
+      return;
+    }
+    
     final XFile? capturedImage = await _picker.pickImage(
       source: ImageSource.camera,
       imageQuality: 100,
@@ -383,91 +520,6 @@ class _NewDiaryState extends State<NewDiary> {
       composing: TextRange.empty,
     );
   }
-
-  InlineSpan _buildInlinePreviewSpan(String text, List<String> allPaths) {
-    final spans = <InlineSpan>[];
-    int cursor = 0;
-    for (final match in _inlineImageTokenPattern.allMatches(text)) {
-      if (match.start > cursor) {
-        spans.add(
-          TextSpan(
-            text: text.substring(cursor, match.start),
-            style: const TextStyle(fontSize: 16, color: Colors.black87),
-          ),
-        );
-      }
-
-      final index = int.tryParse(match.group(1) ?? '');
-      if (index != null && index >= 0 && index < allPaths.length) {
-        spans.add(
-          WidgetSpan(
-            alignment: PlaceholderAlignment.middle,
-            child: GestureDetector(
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => FullScreenImagePage(
-                      imageUrls: allPaths,
-                      initialIndex: index,
-                    ),
-                  ),
-                );
-              },
-              child: Container(
-                margin: const EdgeInsets.symmetric(horizontal: 2),
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFEDEADE),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: const [
-                    Icon(Icons.photo, size: 14, color: Colors.black54),
-                    SizedBox(width: 4),
-                    Text(
-                      'image',
-                      style: TextStyle(fontSize: 12, color: Colors.black87),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        );
-      } else {
-        spans.add(
-          TextSpan(
-            text: match.group(0),
-            style: const TextStyle(fontSize: 16, color: Colors.black54),
-          ),
-        );
-      }
-      cursor = match.end;
-    }
-
-    if (cursor < text.length) {
-      spans.add(
-        TextSpan(
-          text: text.substring(cursor),
-          style: const TextStyle(fontSize: 16, color: Colors.black87),
-        ),
-      );
-    }
-
-    if (spans.isEmpty) {
-      spans.add(
-        const TextSpan(
-          text: '',
-          style: TextStyle(fontSize: 16, color: Colors.black87),
-        ),
-      );
-    }
-
-    return TextSpan(children: spans);
-  }
-
 
 
   @override
@@ -631,7 +683,7 @@ class _NewDiaryState extends State<NewDiary> {
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
                 GestureDetector(
-                  onTap: pickImages,
+                  onTap: _isImageLimitCooldown ? null : pickImages,
                   child: Icon(Icons.add),
                 ),
                 Divider(
@@ -640,9 +692,7 @@ class _NewDiaryState extends State<NewDiary> {
                   color: Color(0xffEDEADE),
                 ),
                 GestureDetector(
-                  onTap: () async {
-                    await openCameraPageAndUpload();
-                  },
+                  onTap: _isImageLimitCooldown ? null : openCameraPageAndUpload,
                   child: Icon(Icons.camera_alt, size: 30, color: Colors.black54),
                 )
               ],
@@ -654,7 +704,6 @@ class _NewDiaryState extends State<NewDiary> {
   }
 
   Container textfield(double containerHeight, double width) {
-    final allPaths = _allImagePaths();
     return Container(
       width: width,
       height: containerHeight,
@@ -698,21 +747,36 @@ class _NewDiaryState extends State<NewDiary> {
           Container(
             padding: EdgeInsets.all(16),
             child: Row(
-              mainAxisAlignment: MainAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  "Date: ",
-                  style: TextStyle(
-                    fontSize: 16,
-                    color: Colors.black87,
+                Row(
+                  children: [
+                    Text(
+                      "Date: ",
+                      style: TextStyle(
+                        fontSize: 16,
+                        color: Colors.black87,
+                      ),
                   ),
+                    Text(
+                      date.toString().substring(0, 10),
+                      style: TextStyle(
+                        fontSize: 16,
+                        color: Colors.black87,
+                      ),
+                    ),
+                  ],
                 ),
-                Text(
-                  date.toString().substring(0, 10),
-                  style: TextStyle(
-                    fontSize: 16,
-                    color: Colors.black87,
-                  ),
+                TextButton.icon(
+                  onPressed: (_isGeneratingDiaryContent || isLoading) ? null : _showAiOptionsAndGenerate,
+                  icon: _isGeneratingDiaryContent
+                      ? const SizedBox(
+                          width: 14,
+                          height: 14,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.auto_awesome, size: 16),
+                  label: Text(_isGeneratingDiaryContent ? 'Generating...' : isLoading ? 'Uploading...' : 'AI Draft'),
                 ),
               ],
             ),
@@ -737,40 +801,29 @@ class _NewDiaryState extends State<NewDiary> {
                     ),
                   ),
                 ),
-                if (_diaryController.text.contains('[img:'))
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
-                    decoration: const BoxDecoration(
-                      border: Border(
-                        top: BorderSide(color: Color(0xfff1e9d2), width: 1),
-                      ),
-                    ),
-                    child: SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
-                      child: RichText(
-                        text: _buildInlinePreviewSpan(
-                          _diaryController.text,
-                          allPaths,
-                        ),
-                      ),
-                    ),
-                  ),
               ],
             ),
           ),
-          if (allPaths.isNotEmpty)
+          if (_allImagePaths().isNotEmpty)
             Container(
               width: double.infinity,
               padding: const EdgeInsets.fromLTRB(12, 0, 12, 10),
               child: Wrap(
-                spacing: 6,
-                runSpacing: 6,
-                children: List.generate(allPaths.length, (index) {
-                  return OutlinedButton.icon(
+                spacing: 8,
+                runSpacing: 8,
+                alignment: WrapAlignment.spaceEvenly,
+                children: List.generate(_allImagePaths().length, (index) {
+                  return OutlinedButton(
                     onPressed: () => _insertImageTokenAtCursor(index),
-                    icon: const Icon(Icons.photo, size: 16),
-                    label: Text('Insert img ${index + 1}'),
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                      minimumSize: Size.zero,
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    ),
+                    child: Text(
+                      'Insert img ${index + 1}',
+                      style: const TextStyle(fontSize: 13),
+                    ),
                   );
                 }),
               ),

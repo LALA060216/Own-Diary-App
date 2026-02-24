@@ -1,15 +1,13 @@
 import 'dart:async';
-import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/intl.dart';
-import 'package:google_generative_ai/google_generative_ai.dart';
-import 'package:http/http.dart' as http;
-import 'package:image/image.dart' as img;
 import '../services/firestore_service.dart';
+import '../services/gemini_service.dart';
+import '../services/models/ai_chat_model.dart';
 import '../services/models/diary_entry_model.dart';
 import 'details_diary.dart';
 
@@ -522,11 +520,6 @@ class _DiariesState extends State<Diaries> {
   final TextEditingController _searchController = TextEditingController();
 
   final FirestoreService firestoreService = FirestoreService();
-  final GenerativeModel _visionModel = GenerativeModel(
-    model: 'gemini-2.5-flash',
-    apiKey: 'AIzaSyB7fyWwmbbFQEV_0IYTXBV6EZ0uUsELFj8',
-    generationConfig: GenerationConfig(temperature: 0.2, topP: 0.8),
-  );
 
   String? userId;
   Stream<List<DiaryEntryModel>>? diaryStream;
@@ -572,38 +565,6 @@ class _DiariesState extends State<Diaries> {
           _allDiaries = [];
         });
       });
-    }
-  }
-
-  /// Downloads image from URL, downscales to 512px, and compresses to JPEG
-  /// Returns compressed bytes suitable for Gemini API (reduces payload size dramatically)
-  Future<Uint8List?> _downloadAndDownscaleForGemini(String imageUrl) async {
-    try {
-      // Download with timeout
-      final response = await http.get(Uri.parse(imageUrl))
-          .timeout(const Duration(seconds: 7));
-      
-      if (response.statusCode != 200) return null;
-      
-      // Decode image
-      img.Image? image = img.decodeImage(response.bodyBytes);
-      if (image == null) return null;
-      
-      // Resize: longest side to 512px for speed
-      const maxDimension = 512;
-      if (image.width > maxDimension || image.height > maxDimension) {
-        if (image.width > image.height) {
-          image = img.copyResize(image, width: maxDimension);
-        } else {
-          image = img.copyResize(image, height: maxDimension);
-        }
-      }
-      
-      // Compress to JPEG quality 70 (balance of size/quality)
-      final compressed = img.encodeJpg(image, quality: 70);
-      return Uint8List.fromList(compressed);
-    } catch (_) {
-      return null;
     }
   }
 
@@ -739,54 +700,16 @@ class _DiariesState extends State<Diaries> {
   Future<String> _classifyMomentFromImageOnly(DiaryEntryModel diary) async {
     if (diary.imageUrls.isEmpty) return 'moments';
 
-    final parts = <Part>[
-      TextPart(
-        'You are an image classifier for diary moments. '
-        'Look at the image and classify what you see. '
-        'Return exactly ONE category from: '
-        'food_buddy (for food, meals, restaurants, cooking), '
-        'funny_moment (for humor, jokes), '
-        'travel_memory (for travel, trips, vacation), '
-        'study_day (for studying, school), '
-        'work_life (for work, office), '
-        'fitness (for exercise, sports, gym), '
-        'family_time (for family photos), '
-        'friend_vibes (for friends hanging out), '
-        'romance (for couples, dates), '
-        'pet_time (for pets, animals), '
-        'night_thoughts (for nighttime), '
-        'music_movie (for concerts, movies), '
-        'nature_walk (for nature, outdoors), '
-        'self_growth (for personal development), '
-        'moments (only if image does not match any category). '
-        'Be confident - if you see food in the image, return food_buddy. '
-        'Output only the category key, no explanation.'
-        'if image cannot be processed, return HelloWorld',
-      ),
-    ];
+    final imageClassifierModel = AIChatModel(
+      prompt: GeminiService.classificationPrompt,
+      model: 'gemini-2.5-flash',
+    );
 
-    // Process only 1 image for speed (reduced from 2)
-    final imageUrls = diary.imageUrls
-        .where((u) => _isNetworkUrl(u) && u.trim().isNotEmpty)
-        .take(1);
-    
-    for (final imageUrl in imageUrls) {
-      final compressedBytes = await _downloadAndDownscaleForGemini(imageUrl);
-      print('Compressed bytes for image $imageUrl: ${compressedBytes?.length ?? 0}');
-      if (compressedBytes != null) {
-        parts.add(DataPart('image/jpeg', compressedBytes));
-        break; // Only use first successfully downloaded image
-      }
-    }
-
-    if (parts.length == 1) return 'moments';
-
-    final response = await _visionModel.generateContent([
-      Content.multi(parts),
-    ]);
-    final rawText = response.text ?? '';
+    final rawText = await GeminiService(chatModel: imageClassifierModel)
+        .classifyDiaryImage(diary.imageUrls);
     if (rawText.trim().isEmpty) {
       print('AI classification empty response for diary ${diary.id}');
+      return 'moments';
     }
     print('AI classification for diary ${diary.id}: $rawText');
     return _extractCategoryFromAiResponse(rawText);
