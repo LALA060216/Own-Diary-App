@@ -60,8 +60,13 @@ class _NewDiaryState extends State<NewDiary> {
       prompt: 'Generate one short diary title based on the diary content. Keep it natural, specific, and between 3 to 8 words. Return ONLY the title text without quotes, labels, markdown, or extra explanation.',
       model: 'gemma-3-27b-it'
     );
+  final contentChatModel = AIChatModel(
+      prompt: 'You are a diary writing assistant. Generate a natural first-person diary entry draft between 120 and 220 words. Keep the tone personal, reflective, and simple. Do not use markdown, bullet points, or headings. Return only the diary text.',
+      model: 'gemma-3-27b-it'
+    );
   Timer? _titleDebounceTimer;
   bool _isGeneratingTitle = false;
+  bool _isGeneratingDiaryContent = false;
   bool _isApplyingAiTitle = false;
   bool _isTitleManuallyEdited = false;
   bool _isDisposed = false;
@@ -175,6 +180,63 @@ class _NewDiaryState extends State<NewDiary> {
     } finally {
       _isGeneratingTitle = false;
       _isApplyingAiTitle = false;
+    }
+  }
+
+  String _sanitizeGeneratedDiaryContent(String rawText) {
+    var cleaned = rawText.trim();
+    if (cleaned.startsWith('Error:')) return '';
+    cleaned = cleaned
+        .replaceAll(RegExp(r'```[\s\S]*?```'), '')
+        .replaceAll(RegExp(r'^#+\s*', multiLine: true), '')
+        .trim();
+    return cleaned;
+  }
+
+  Future<void> _generateAiDiaryContent() async {
+    if (_isGeneratingDiaryContent) return;
+    final currentTitle = _titleController.text.trim();
+    final currentContext = _diaryController.text.trim();
+
+    if (currentTitle.isEmpty && currentContext.isEmpty) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Add a title or a few words first.')),
+      );
+      return;
+    }
+
+    setState(() {
+      _isGeneratingDiaryContent = true;
+    });
+
+    try {
+      final promptInput = '''
+Title: ${currentTitle.isEmpty ? 'Not provided' : currentTitle}
+Current draft: ${currentContext.isEmpty ? 'Not provided' : currentContext}
+
+Generate a polished diary draft based on the details above.
+''';
+
+      final generated = await GeminiService(chatModel: contentChatModel).sendMessage(promptInput);
+      final aiText = _sanitizeGeneratedDiaryContent(generated);
+      if (aiText.isEmpty) return;
+
+      final mergedText = currentContext.isEmpty
+          ? aiText
+          : '$currentContext\n\n$aiText';
+
+      _diaryController.text = mergedText;
+      _diaryController.selection = TextSelection.fromPosition(
+        TextPosition(offset: _diaryController.text.length),
+      );
+      if (!mounted) return;
+      setState(() {});
+    } finally {
+      if (!mounted) return;
+      setState(() {
+        _isGeneratingDiaryContent = false;
+      });
     }
   }
 
@@ -424,8 +486,6 @@ class _NewDiaryState extends State<NewDiary> {
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: const [
-                    Icon(Icons.photo, size: 14, color: Colors.black54),
-                    SizedBox(width: 4),
                     Text(
                       'image',
                       style: TextStyle(fontSize: 12, color: Colors.black87),
@@ -654,7 +714,6 @@ class _NewDiaryState extends State<NewDiary> {
   }
 
   Container textfield(double containerHeight, double width) {
-    final allPaths = _allImagePaths();
     return Container(
       width: width,
       height: containerHeight,
@@ -698,21 +757,36 @@ class _NewDiaryState extends State<NewDiary> {
           Container(
             padding: EdgeInsets.all(16),
             child: Row(
-              mainAxisAlignment: MainAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  "Date: ",
-                  style: TextStyle(
-                    fontSize: 16,
-                    color: Colors.black87,
+                Row(
+                  children: [
+                    Text(
+                      "Date: ",
+                      style: TextStyle(
+                        fontSize: 16,
+                        color: Colors.black87,
+                      ),
                   ),
+                    Text(
+                      date.toString().substring(0, 10),
+                      style: TextStyle(
+                        fontSize: 16,
+                        color: Colors.black87,
+                      ),
+                    ),
+                  ],
                 ),
-                Text(
-                  date.toString().substring(0, 10),
-                  style: TextStyle(
-                    fontSize: 16,
-                    color: Colors.black87,
-                  ),
+                TextButton.icon(
+                  onPressed: _isGeneratingDiaryContent ? null : _generateAiDiaryContent,
+                  icon: _isGeneratingDiaryContent
+                      ? const SizedBox(
+                          width: 14,
+                          height: 14,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.auto_awesome, size: 16),
+                  label: Text(_isGeneratingDiaryContent ? 'Generating...' : 'AI Draft'),
                 ),
               ],
             ),
@@ -737,40 +811,20 @@ class _NewDiaryState extends State<NewDiary> {
                     ),
                   ),
                 ),
-                if (_diaryController.text.contains('[img:'))
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
-                    decoration: const BoxDecoration(
-                      border: Border(
-                        top: BorderSide(color: Color(0xfff1e9d2), width: 1),
-                      ),
-                    ),
-                    child: SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
-                      child: RichText(
-                        text: _buildInlinePreviewSpan(
-                          _diaryController.text,
-                          allPaths,
-                        ),
-                      ),
-                    ),
-                  ),
               ],
             ),
           ),
-          if (allPaths.isNotEmpty)
+          if (_allImagePaths().isNotEmpty)
             Container(
               width: double.infinity,
               padding: const EdgeInsets.fromLTRB(12, 0, 12, 10),
               child: Wrap(
                 spacing: 6,
                 runSpacing: 6,
-                children: List.generate(allPaths.length, (index) {
-                  return OutlinedButton.icon(
+                children: List.generate(_allImagePaths().length, (index) {
+                  return OutlinedButton(
                     onPressed: () => _insertImageTokenAtCursor(index),
-                    icon: const Icon(Icons.photo, size: 16),
-                    label: Text('Insert img ${index + 1}'),
+                    child: Text('Insert img ${index + 1}'),
                   );
                 }),
               ),

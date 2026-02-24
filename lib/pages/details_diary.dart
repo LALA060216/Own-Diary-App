@@ -45,6 +45,13 @@ class _DetailsDiaryState extends State<DetailsDiary> {
   int _focusScrollAttempt = 0;
   bool _highlightFocusToken = false;
 
+  List<String> _allImagePaths() {
+    return [
+      ..._imageUrls,
+      ..._newImages.map((file) => file.path),
+    ];
+  }
+
   @override
   void initState() {
     super.initState();
@@ -107,10 +114,106 @@ class _DetailsDiaryState extends State<DetailsDiary> {
     if (!_isEditing) return;
     final List<XFile> pickedFiles = await _picker.pickMultiImage();
     if (pickedFiles.isEmpty) return;
+    final startIndex = _imageUrls.length + _newImages.length;
     if (!mounted) return;
     setState(() {
       _newImages.addAll(pickedFiles.map((file) => File(file.path)));
     });
+    for (var i = 0; i < pickedFiles.length; i++) {
+      _insertImageTokenAtCursor(startIndex + i);
+    }
+  }
+
+  Future<void> _openCameraAndPick() async {
+    if (!_isEditing) return;
+    final XFile? capturedImage = await _picker.pickImage(
+      source: ImageSource.camera,
+      imageQuality: 100,
+    );
+
+    if (capturedImage == null || !mounted) return;
+    final imageIndex = _imageUrls.length + _newImages.length;
+    setState(() {
+      _newImages.add(File(capturedImage.path));
+    });
+    _insertImageTokenAtCursor(imageIndex);
+  }
+
+  void _insertImageTokenAtCursor(int imageIndex) {
+    final token = '[img:$imageIndex]';
+    final text = _contextController.text;
+    final selection = _contextController.selection;
+    if (!selection.isValid || selection.start < 0 || selection.end < 0) {
+      _contextController.text = text.isEmpty ? token : '$text $token';
+      _contextController.selection = TextSelection.fromPosition(
+        TextPosition(offset: _contextController.text.length),
+      );
+      return;
+    }
+
+    final start = selection.start;
+    final end = selection.end;
+    final replacement = token;
+    final newText = text.replaceRange(start, end, replacement);
+    _contextController.value = TextEditingValue(
+      text: newText,
+      selection: TextSelection.collapsed(offset: start + replacement.length),
+    );
+  }
+
+  void _rewriteImageTokensAfterRemove(int removedIndex) {
+    final original = _contextController.text;
+    final rewritten = original.replaceAllMapped(_inlineImageTokenPattern, (match) {
+      final raw = match.group(1);
+      final parsed = int.tryParse(raw ?? '');
+      if (parsed == null) return match.group(0) ?? '';
+      if (parsed == removedIndex) return '';
+      if (parsed > removedIndex) return '[img:${parsed - 1}]';
+      return '[img:$parsed]';
+    });
+
+    if (rewritten == original) return;
+    _contextController.value = _contextController.value.copyWith(
+      text: rewritten,
+      selection: TextSelection.collapsed(
+        offset: rewritten.length.clamp(0, rewritten.length),
+      ),
+      composing: TextRange.empty,
+    );
+  }
+
+  Future<void> _removeImageAt(int index, bool isExistingImage) async {
+    if (!_isEditing || _isSaving) return;
+
+    try {
+      if (isExistingImage) {
+        if (index < 0 || index >= _imageUrls.length) return;
+        final imageUrl = _imageUrls[index];
+        await _storageService.deleteImage(imageUrl);
+        if (!mounted) return;
+        setState(() {
+          _imageUrls.removeAt(index);
+        });
+        _rewriteImageTokensAfterRemove(index);
+        await _firestoreService.updateDiaryEntryImageUrls(
+          entryId: widget.diary.id,
+          newImageUrls: List<String>.from(_imageUrls),
+        );
+      } else {
+        final localIndex = index - _imageUrls.length;
+        if (localIndex < 0 || localIndex >= _newImages.length) return;
+        if (!mounted) return;
+        setState(() {
+          _newImages.removeAt(localIndex);
+        });
+        _rewriteImageTokensAfterRemove(index);
+      }
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Failed to delete image. Please try again.')),
+      );
+    }
   }
 
   void _toggleEditMode() {
@@ -232,14 +335,6 @@ class _DetailsDiaryState extends State<DetailsDiary> {
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(
-                        Icons.photo,
-                        size: 14,
-                        color: shouldHighlightFocusedToken
-                            ? const Color(0xFF8A6A00)
-                            : Colors.black54,
-                      ),
-                      const SizedBox(width: 4),
                       Text(
                         'image',
                         style: TextStyle(
@@ -291,15 +386,24 @@ class _DetailsDiaryState extends State<DetailsDiary> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: const Color(0xffffffff),
+      resizeToAvoidBottomInset: false,
       appBar: AppBar(
-        title: const Text('Diary Details'),
+        automaticallyImplyLeading: true,
+        backgroundColor: const Color(0xffffffff),
+        surfaceTintColor: const Color(0xffffffff),
+        shadowColor: Colors.transparent,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        centerTitle: true,
+        title: Text(
+          _isEditing ? 'Edit Diary' : 'Diary Details',
+          style: const TextStyle(
+            fontSize: 30,
+            fontFamily: 'Lobstertwo',
+          ),
+        ),
         actions: [
-          if (_isEditing)
-            IconButton(
-              onPressed: _isSaving ? null : _pickImages,
-              icon: const Icon(Icons.add),
-              tooltip: 'Add Image',
-            ),
           IconButton(
             onPressed: _isSaving ? null : (_isEditing ? _saveDiary : _toggleEditMode),
             icon: Icon(_isEditing ? Icons.check : Icons.edit),
@@ -307,108 +411,349 @@ class _DetailsDiaryState extends State<DetailsDiary> {
           ),
         ],
       ),
-      body: SingleChildScrollView(
-        controller: _scrollController,
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _isEditing
-                ? TextField(
-                    controller: _titleController,
-                    style: const TextStyle(
-                      fontSize: 26,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.black87,
-                    ),
-                    decoration: const InputDecoration(
-                      hintText: 'Add a title...',
-                      border: InputBorder.none,
-                    ),
-                  )
-                : Text(
-                    _currentTitle.trim().isEmpty ? 'Untitled' : _currentTitle,
-                    style: const TextStyle(
-                      fontSize: 26,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.black87,
-                    ),
-                  ),
-            const SizedBox(height: 8),
-            Text(
-              DateFormat('dd MMM yyyy').format(widget.diary.created),
-              style: const TextStyle(fontSize: 16, color: Colors.grey),
+      body: _isEditing ? _buildEditingBody() : _buildDetailsBody(),
+    );
+  }
+
+  Widget _buildDetailsBody() {
+    return SingleChildScrollView(
+      controller: _scrollController,
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            _currentTitle.trim().isEmpty ? 'Untitled' : _currentTitle,
+            style: const TextStyle(
+              fontSize: 26,
+              fontWeight: FontWeight.bold,
+              color: Colors.black87,
             ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            DateFormat('dd MMM yyyy').format(widget.diary.created),
+            style: const TextStyle(fontSize: 16, color: Colors.grey),
+          ),
+          if (_imageUrls.isNotEmpty) ...[
             const SizedBox(height: 20),
-            if (_imageUrls.isNotEmpty || _newImages.isNotEmpty)
-              SizedBox(
-                height: 200,
-                child: ListView(
-                  scrollDirection: Axis.horizontal,
-                  children: [
-                    ..._imageUrls.asMap().entries.map((entry) {
-                      final index = entry.key;
-                      final url = entry.value;
-                      return Padding(
-                        padding: const EdgeInsets.only(right: 8.0),
-                        child: GestureDetector(
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => FullScreenImagePage(
-                                  imageUrls: _imageUrls,
-                                  initialIndex: index,
-                                ),
-                              ),
-                            );
-                          },
-                          child: Hero(
-                            tag: url,
-                            child: Image.network(
-                              url,
-                              fit: BoxFit.cover,
-                              width: MediaQuery.of(context).size.width * 0.8,
+            SizedBox(
+              height: 200,
+              child: ListView.builder(
+                scrollDirection: Axis.horizontal,
+                itemCount: _imageUrls.length,
+                itemBuilder: (context, index) {
+                  final imageUrl = _imageUrls[index];
+                  return Padding(
+                    padding: const EdgeInsets.only(right: 8.0),
+                    child: GestureDetector(
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => FullScreenImagePage(
+                              imageUrls: _imageUrls,
+                              initialIndex: index,
                             ),
                           ),
-                        ),
-                      );
-                    }),
-                    ..._newImages.map((file) {
-                      return Padding(
-                        padding: const EdgeInsets.only(right: 8.0),
-                        child: Image.file(
-                          file,
+                        );
+                      },
+                      child: Hero(
+                        tag: imageUrl,
+                        child: Image.network(
+                          imageUrl,
                           fit: BoxFit.cover,
                           width: MediaQuery.of(context).size.width * 0.8,
                         ),
-                      );
-                    }),
-                  ],
-                ),
+                      ),
+                    ),
+                  );
+                },
               ),
-            const SizedBox(height: 16),
-            _isEditing
-                ? TextField(
-                    controller: _contextController,
-                    minLines: 6,
-                    maxLines: null,
-                    decoration: const InputDecoration(
-                      hintText: 'Write here...',
-                      border: OutlineInputBorder(),
+            ),
+          ],
+          const SizedBox(height: 20),
+          RichText(
+            text: _buildInlineContextSpan(_currentContext),
+          ),
+          if (_isSaving)
+            const Padding(
+              padding: EdgeInsets.only(top: 16),
+              child: Center(child: CircularProgressIndicator()),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEditingBody() {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final double containerHeight = constraints.maxHeight * 0.65;
+        final double imagePickerHeight = constraints.maxHeight * 0.25;
+        final double width = constraints.maxWidth * 0.95;
+
+        return Align(
+          alignment: Alignment.topCenter,
+          child: Padding(
+            padding: const EdgeInsets.only(top: 30),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _editingTextField(containerHeight, width),
+                const SizedBox(height: 20),
+                _editingImagePicker(width, imagePickerHeight),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Container _editingImagePicker(double width, double imagePickerHeight) {
+    final allPaths = _allImagePaths();
+    return Container(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            height: imagePickerHeight,
+            width: width * 0.80,
+            padding: const EdgeInsets.only(left: 15, right: 10),
+            child: allPaths.isEmpty
+                ? const Text(
+                    'No images selected',
+                    style: TextStyle(
+                      fontFamily: 'lobstertwo',
+                      fontSize: 16,
+                      color: Colors.black,
                     ),
                   )
-                : RichText(
-                    text: _buildInlineContextSpan(_currentContext),
+                : ListView.builder(
+                    scrollDirection: Axis.horizontal,
+                    itemCount: allPaths.length,
+                    itemBuilder: (context, index) {
+                      final bool isExisting = index < _imageUrls.length;
+                      final String tag = allPaths[index];
+                      final double itemWidth = 100;
+                      final double itemHeight = imagePickerHeight * 0.6;
+
+                      return Padding(
+                        padding: const EdgeInsets.only(right: 8.0),
+                        child: Hero(
+                          tag: tag,
+                          child: _buildEditableImageTile(
+                            imageUrl: isExisting ? _imageUrls[index] : null,
+                            imageFile: isExisting ? null : _newImages[index - _imageUrls.length],
+                            width: itemWidth,
+                            height: itemHeight,
+                            index: index,
+                            isExistingImage: isExisting,
+                          ),
+                        ),
+                      );
+                    },
                   ),
-            if (_isSaving)
-              const Padding(
-                padding: EdgeInsets.only(top: 16),
-                child: Center(child: CircularProgressIndicator()),
-              ),
-          ],
-        ),
+          ),
+          Container(
+            height: imagePickerHeight * 0.7,
+            width: width * 0.20,
+            decoration: BoxDecoration(
+              color: const Color(0xffF9F6EE),
+              borderRadius: BorderRadius.circular(8),
+              boxShadow: const [
+                BoxShadow(
+                  color: Color(0xffEDEADE),
+                  spreadRadius: 2,
+                  blurRadius: 4,
+                  offset: Offset(0, 1),
+                ),
+              ],
+            ),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                GestureDetector(
+                  onTap: _isSaving ? null : _pickImages,
+                  child: const Icon(Icons.add),
+                ),
+                const Divider(
+                  thickness: 2,
+                  height: 1,
+                  color: Color(0xffEDEADE),
+                ),
+                GestureDetector(
+                  onTap: _isSaving ? null : _openCameraAndPick,
+                  child: const Icon(Icons.camera_alt, size: 30, color: Colors.black54),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
+    );
+  }
+
+  Container _editingTextField(double containerHeight, double width) {
+    return Container(
+      width: width,
+      height: containerHeight,
+      decoration: BoxDecoration(
+        color: const Color(0xffF9F6EE),
+        borderRadius: BorderRadius.circular(10),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0xffEDEADE),
+            spreadRadius: 2,
+            blurRadius: 4,
+            offset: Offset(0, 1),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            child: TextField(
+              controller: _titleController,
+              style: const TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+              ),
+              decoration: const InputDecoration(
+                hintText: 'Add a title...',
+                hintStyle: TextStyle(
+                  color: Color(0xFFB0B0B0),
+                  fontWeight: FontWeight.w500,
+                ),
+                border: InputBorder.none,
+              ),
+            ),
+          ),
+          const Divider(
+            height: 1,
+            thickness: 1.5,
+            color: Color(0xfff1e9d2),
+          ),
+          Container(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.start,
+              children: [
+                const Text(
+                  'Date: ',
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: Colors.black87,
+                  ),
+                ),
+                Text(
+                  DateFormat('yyyy-MM-dd').format(widget.diary.created),
+                  style: const TextStyle(
+                    fontSize: 16,
+                    color: Colors.black87,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const Divider(
+            height: 1,
+            thickness: 1.5,
+            color: Color(0xfff1e9d2),
+          ),
+          Expanded(
+            child: TextField(
+              controller: _contextController,
+              maxLines: null,
+              expands: true,
+              decoration: const InputDecoration(
+                hintText: 'Write here...',
+                contentPadding: EdgeInsets.all(16),
+                border: InputBorder.none,
+              ),
+            ),
+          ),
+          if (_allImagePaths().isNotEmpty)
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.fromLTRB(12, 0, 12, 10),
+              child: Wrap(
+                spacing: 6,
+                runSpacing: 6,
+                children: List.generate(_allImagePaths().length, (index) {
+                  return OutlinedButton(
+                    onPressed: () => _insertImageTokenAtCursor(index),
+                    child: Text('Insert img ${index + 1}'),
+                  );
+                }),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Stack _buildEditableImageTile({
+    required String? imageUrl,
+    required File? imageFile,
+    required double width,
+    required double height,
+    required int index,
+    required bool isExistingImage,
+  }) {
+    final allPaths = _allImagePaths();
+    return Stack(
+      children: [
+        GestureDetector(
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => FullScreenImagePage(
+                  imageUrls: allPaths,
+                  initialIndex: index,
+                ),
+              ),
+            );
+          },
+          child: Container(
+            margin: const EdgeInsets.only(right: 8),
+            width: width,
+            height: height,
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: isExistingImage
+                  ? Image.network(imageUrl!, fit: BoxFit.cover)
+                  : Image.file(imageFile!, fit: BoxFit.cover),
+            ),
+          ),
+        ),
+        Positioned(
+          top: 4,
+          right: width * 0.1,
+          child: GestureDetector(
+            onTap: _isSaving ? null : () => _removeImageAt(index, isExistingImage),
+            child: Container(
+              height: 20,
+              width: 20,
+              decoration: const BoxDecoration(
+                color: Colors.black54,
+                shape: BoxShape.circle,
+              ),
+              child: _isSaving
+                  ? const CircularProgressIndicator(strokeWidth: 1.5, color: Colors.white)
+                  : const Icon(
+                      Icons.close,
+                      size: 20,
+                      color: Colors.white,
+                    ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
