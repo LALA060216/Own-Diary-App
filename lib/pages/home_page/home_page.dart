@@ -217,6 +217,7 @@ class _HomepageState extends State<Homepage> with RouteAware{
     
     if (requestAi) {
       await GeminiService(chatModel: _attentionModel).getAttentionAnalysis(context).then((value) {
+        print(value);
         try {
           Map<String, int> parsedData = {};
           String cleanedValue = value.trim();
