@@ -1,5 +1,4 @@
 import 'dart:convert';
-
 import 'package:diaryapp/main.dart';
 import 'package:diaryapp/services/firestore_service.dart';
 import 'package:diaryapp/services/gemini_service.dart';
@@ -7,10 +6,10 @@ import 'package:diaryapp/services/models/ai_chat_model.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-
+import 'package:diaryapp/pages/home_page/ai/ai_prompt.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:fl_chart/fl_chart.dart';
-import 'newdiary_page.dart';
+import '../newdiary_page.dart';
 
 bool createdNewDiaryToday = false;
 bool updatedDiary = true;
@@ -18,8 +17,9 @@ bool hasLoadedInitial = false;
 String streak = '';
 String oldDiaryContext = '';
 int analyseIndex = 0;
-List<List<int>> status = [[0,0], [0,0]]; 
+List<List<int>> mood = [[0,0], [0,0]]; 
 List<Map<String, int>> attentionData = [{},{}];
+TextEditingController previousDiaryController = TextEditingController();
 
 class Homepage extends StatefulWidget {
   const Homepage({super.key});
@@ -31,10 +31,14 @@ class Homepage extends StatefulWidget {
 class _HomepageState extends State<Homepage> with RouteAware{
   late final FirestoreService firestoreService = FirestoreService();
   late final String userId = FirebaseAuth.instance.currentUser!.uid;
+  late final AIChatModel _moodModel = AIChatModel(prompt: promptForMood, model: 'gemini-2.5-flash');
+  late final AIChatModel _attentionModel = AIChatModel(prompt: promptForAnalyse, model: 'gemini-2.5-flash');
+
   List<String> imageUrls = [];
   String? diaryId = '';
   bool isLoading = false;
   bool isloadingAttention = false;
+  DateTime now = DateTime.now();
 
   static const _moodTitleStyle = TextStyle(
     fontSize: 30,
@@ -42,213 +46,39 @@ class _HomepageState extends State<Homepage> with RouteAware{
     fontFamily: 'Lobstertwo',
     color: Colors.black87,
   );
-
-  String promptForMood = 'You are a sentiment analyzer. Analyze the diary entry and select the best matching index (0-19) from the two lists below.\nHealth Statuses (0-19):\n["Healthy", "Infected", "Feverish", "Chills", "Painful", "Fatigued", "Dizzy", "Depressed", "Nauseous", "Active", "Bedridden", "Energetic", "Weak", "Immobile", "Pregnant", "Frail", "Hospitalized", "Hygienic", "Overweight", "Critical"]\nEmotion Statuses (0-19):\n["Happy", "Overjoyed", "Loved", "Neutral", "Sad", "Depressed", "Angry", "Furious", "Annoyed", "Exhausted", "Embarrassed", "Shocked", "Awkward", "Confused", "Scared", "Stressed", "Heartbroken", "Gloomy", "Chill", "Terrible"]\nReturn ONLY two numbers separated by a space.\n!!Important!! Follow these two Rules: 1) If the diary entry describes emotions but DOES NOT mention physical symptoms or health, default the health_index to 0. 2) Do not include any other text, explanations, or formatting. Just the two numbers. Example: 5 10. Bad response: 08 06';
-  String promptForAnalyse = '''Analyze this diary entry and identify what the user is paying ATTENTION to - the main TOPICS, SUBJECTS, or FOCUS AREAS mentioned.
-
-IMPORTANT RULES:
-1. Extract meaningful topics/subjects the person focused on: work, family, friends, school, exercise, health, projects, hobbies, relationships, travel, learning, etc.
-2. DO NOT extract vague words like: time, day, today, things, stuff, moment, situation, life, feelings, emotions
-3. DO NOT extract people names - use their relationship instead (e.g., "mom" instead of "Sarah")
-4. Values are percentages (integers) that must sum to exactly 100
-5. Include 2-5 topics maximum, based on what the diary entry emphasizes
-
-EXAMPLES:
-- Diary: "Had a great day with family, went to the gym, then did some work emails" -> {"family": 40, "exercise": 30, "work": 30}
-- Diary: "Studied for my exam, went to school, met friends for lunch" -> {"school": 45, "study": 35, "friends": 20}
-- Diary: "Worked on my project all day, it's going well" -> {"work": 60, "project": 40}
-
-Return ONLY a JSON object with no other text:''';
-  
-  TextEditingController _previousDiaryController = TextEditingController();
-  late final AIChatModel _chatModel = AIChatModel(prompt: promptForMood, model: 'gemma-3-12b-it');
-  late final AIChatModel _analyseChatModel = AIChatModel(prompt: promptForAnalyse, model: 'gemma-3-12b-it');
   String previousTitle = '';
-
-  List<dynamic> healthIcons = [
-    FontAwesomeIcons.heartPulse,
-    FontAwesomeIcons.virus,
-    FontAwesomeIcons.temperatureHigh,
-    FontAwesomeIcons.faceGrimace,
-    FontAwesomeIcons.faceTired,
-    FontAwesomeIcons.faceDizzy,
-    FontAwesomeIcons.faceSadTear,
-    FontAwesomeIcons.faceRollingEyes,
-    FontAwesomeIcons.personRunning,
-    FontAwesomeIcons.bed,
-    FontAwesomeIcons.batteryFull,
-    FontAwesomeIcons.batteryQuarter,
-    FontAwesomeIcons.wheelchair,
-    FontAwesomeIcons.personPregnant,
-    FontAwesomeIcons.personCane,
-    FontAwesomeIcons.hospital,
-    FontAwesomeIcons.handsBubbles,
-    FontAwesomeIcons.weightScale,
-    FontAwesomeIcons.skull
-  ];
-  List<String> healthStatuses = [
-    "Healthy",
-    "Infected",
-    "Feverish",
-    "Chills",
-    "Painful",
-    "Fatigued",
-    "Dizzy",
-    "Depressed",
-    "Nauseous",
-    "Active",
-    "Bedridden",
-    "Energetic",
-    "Weak",
-    "Immobile",
-    "Pregnant",
-    "Frail",
-    "Hospitalized",
-    "Hygienic",
-    "Overweight",
-    "Critical",
-  ];
-
-  List<dynamic> emotionIcons = [
-    FontAwesomeIcons.faceSmile,      
-    FontAwesomeIcons.faceLaughBeam,   
-    FontAwesomeIcons.faceGrinHearts,  
-    FontAwesomeIcons.faceMeh,         
-    FontAwesomeIcons.faceFrown,       
-    FontAwesomeIcons.faceSadTear,     
-    FontAwesomeIcons.faceAngry,       
-    FontAwesomeIcons.fire,            
-    FontAwesomeIcons.faceRollingEyes, 
-    FontAwesomeIcons.faceTired,       
-    FontAwesomeIcons.faceFlushed,     
-    FontAwesomeIcons.faceSurprise,    
-    FontAwesomeIcons.faceGrimace,     
-    FontAwesomeIcons.faceDizzy,       
-    FontAwesomeIcons.ghost,           
-    FontAwesomeIcons.bolt,            
-    FontAwesomeIcons.heartCrack,      
-    FontAwesomeIcons.cloudRain,       
-    FontAwesomeIcons.peace,           
-    FontAwesomeIcons.poo,             
-  ];
-  List<String> emotionStatus = [
-    "Happy",
-    "Overjoyed",
-    "Loved",
-    "Neutral",
-    "Sad",
-    "Depressed",
-    "Angry",
-    "Furious",
-    "Annoyed",
-    "Exhausted",
-    "Embarrassed",
-    "Shocked",
-    "Awkward",
-    "Confused",
-    "Scared",
-    "Stressed",
-    "Heartbroken",
-    "Gloomy",
-    "Chill",
-    "Terrible",
-  ];
-
-  List<Color> healthColors = [
-  Colors.green,              // Healthy
-  Colors.purpleAccent,       // Infected (Virus color)
-  Colors.deepOrange,         // Feverish (Hot)
-  Colors.cyan,               // Chills (Cold)
-  Colors.red,                // Painful
-  Colors.brown.shade300,     // Fatigued
-  Colors.blueGrey,           // Dizzy
-  Colors.indigo,             // Depressed (Health context)
-  Colors.lime.shade800,      // Nauseous (Sickly green)
-  Colors.teal,               // Active
-  Colors.blueGrey.shade200,  // Bedridden
-  Colors.amber,              // Energetic
-  Colors.amber.shade100,     // Weak
-  Colors.grey,               // Immobile
-  Colors.pinkAccent.shade100,// Pregnant
-  Colors.brown.shade100,     // Frail
-  Colors.lightBlue.shade100, // Hospitalized (Sterile blue)
-  Colors.lightBlue,          // Hygienic
-  Colors.orange.shade800,    // Overweight
-  Colors.red.shade900,       // Critical
-];
-  List<Color> emotionColors = [
-  Colors.yellow.shade700,    // Happy
-  Colors.orangeAccent,       // Overjoyed
-  Colors.pink,               // Loved
-  Colors.grey.shade400,      // Neutral
-  Colors.blue,               // Sad
-  Colors.blueGrey.shade900,  // Depressed
-  Colors.redAccent,          // Angry
-  Colors.red.shade900,       // Furious
-  Colors.deepOrangeAccent,   // Annoyed
-  Colors.brown.shade200,     // Exhausted
-  Colors.deepOrange.shade100,// Embarrassed (Blush)
-  Colors.purpleAccent,       // Shocked
-  Colors.lime,               // Awkward
-  Colors.tealAccent,         // Confused
-  Colors.deepPurple,         // Scared
-  Colors.amber.shade900,     // Stressed
-  Colors.pink.shade900,      // Heartbroken
-  Colors.blueGrey,           // Gloomy
-  Colors.cyanAccent,         // Chill
-  Colors.brown,              // Terrible
-];
 
   @override
   void initState() {
     super.initState();
     _checkIfCreatedNewDiaryToday();
-    if (!hasLoadedInitial) {
+    _getStreak();
+    if (!hasLoadedInitial){
+      if (now.weekday == DateTime.monday) {
+        _updateWeeklyMoodAndAttention(requestAi: true);
+      } else {
+        _updateWeeklyMoodAndAttention(requestAi: false);
+      }
       hasLoadedInitial = true;
-      _getDiaryContext(1).then((context) {
-        if (mounted) {
-          _refreshMood(context, index: 1);
-          _refreshAttention(context, index: 1);
-        }
-      });
     }
     _didUpdatedDiary().then((updated) {
-        if (updated) {
-          _getDiaryContext(0).then((context) {
-            if (mounted) {
-              _refreshMood(context, index: 0);
-              _refreshAttention(context, index: 0);
-            }
+      if (updated) {
+        _updateDailyMoodAndAttention(requestAi: true);
+      } else {
+        if (mounted) {
+          setState(() {
+            isLoading = false;
+            isloadingAttention = false;
           });
         }
+      }
     });
-    _getStreak();
   }
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
     routeObserver.subscribe(this, ModalRoute.of(context)! as PageRoute);
-  }
-
-  @override 
-  void didPopNext() {
-    _checkIfCreatedNewDiaryToday();
-    _didUpdatedDiary().then((updated) {
-      if (updated) {
-        _getDiaryContext(0).then((context) {
-          _refreshMood(context, index: 0);
-          _refreshAttention(context, index: 0);
-        });
-      } else {
-        if (mounted) {
-          setState(() {
-            isloadingAttention = false;
-          });
-        }
-      }
-    });
-    _getStreak();
   }
 
   @override
@@ -260,7 +90,7 @@ Return ONLY a JSON object with no other text:''';
   Future<void> _checkIfCreatedNewDiaryToday() async {
     final newestDiary = await firestoreService.getNewestDiaryDetail(userId);
     DateTime? newestDate = newestDiary?.created;
-    _previousDiaryController.text = newestDiary?.context ?? '';
+    previousDiaryController.text = newestDiary?.context ?? '';
     imageUrls = newestDiary?.imageUrls ?? [];
     diaryId = newestDiary?.id;
     previousTitle = newestDiary?.title ?? '';
@@ -271,11 +101,11 @@ Return ONLY a JSON object with no other text:''';
     });
   }
 
-  Future<String> _getDiaryContext(int index) async {
-    if (index == 0) {
+  Future<String> _getDiaryContext(String contextType) async {
+    if (contextType == 'daily') {
       final newestDiary = await firestoreService.getNewestDiaryDetail(userId);
       return newestDiary?.context ?? '';
-    } else if (index == 1) {
+    } else if (contextType == 'weekly') {
       return await firestoreService.getUserDiaryContextPastWeek(userId);
     }
     return '';
@@ -301,66 +131,147 @@ Return ONLY a JSON object with no other text:''';
     return false;
   }
 
-  Future<void> _refreshMood(String context, {int? index}) async {
+  Future<void> _refreshMood(String context, {int? index, bool requestAi = true}) async {
     final analyseIndexMood = index ?? analyseIndex;
-    isLoading = true;
-    await GeminiService(chatModel: _chatModel).getMoodAnalysis(context).then((value) {
-      try {
-        final match = RegExp(r'^\s*(\d+)\s+(\d+)\s*$').firstMatch(value);
+    
+    if (!mounted) return;
+    setState(() {
+      isLoading = true;
+    });
+    
+    if (requestAi) {
+      await GeminiService(chatModel: _moodModel).getMoodAnalysis(context).then((value) {
+        try {
+          final match = RegExp(r'^\s*(\d+)\s+(\d+)\s*$').firstMatch(value);
 
-        if (match == null) {
+          if (match == null) {
+            if (!mounted) return;
+            setState(() {
+              isLoading = false;
+              mood[analyseIndexMood] = [0, 0];
+            });
+            return;
+          }
+
+          final healthIndex = int.parse(match.group(1)!)
+              .clamp(0, healthStatuses.length - 1);
+          final emotionIndex = int.parse(match.group(2)!)
+              .clamp(0, emotionStatuses.length - 1);
+
           if (!mounted) return;
           setState(() {
             isLoading = false;
-            status[analyseIndexMood] = [0, 0];
+            mood[analyseIndexMood] = [healthIndex, emotionIndex];
           });
-          return;
+
+          if (index == 0) {
+            firestoreService.updateDailyMood(userId, '$healthIndex-$emotionIndex');
+          } else if (index == 1) {
+            firestoreService.updateWeeklyMood(userId, '$healthIndex-$emotionIndex');
+          }
+
+        } catch (e) {
+          if (!mounted) return;
+          setState(() {
+            isLoading = false;
+            mood[analyseIndexMood] = [0, 0];
+          });
         }
-
-        final healthIndex = int.parse(match.group(1)!)
-            .clamp(0, healthStatuses.length - 1);
-        final emotionIndex = int.parse(match.group(2)!)
-            .clamp(0, emotionStatus.length - 1);
-
-        if (!mounted) return;
-        setState(() {
-          isLoading = false;
-          status[analyseIndexMood] = [healthIndex, emotionIndex];
-        });
+      });
+    } else {
+      try {
+        final storedMoodIndex = await firestoreService.getuserMood(userId, index == 0 ? 'dailyMood' : 'weeklyMood');
+        if (storedMoodIndex.contains('-')) {
+          final moodIndices = storedMoodIndex.split('-'); 
+          if (moodIndices.length == 2) {
+            final healthIndex = int.parse(moodIndices[0])
+                .clamp(0, healthStatuses.length - 1);
+            final emotionIndex = int.parse(moodIndices[1])
+                .clamp(0, emotionStatuses.length - 1);
+            
+            if (!mounted) return;
+            setState(() {
+              isLoading = false;
+              mood[analyseIndexMood] = [healthIndex, emotionIndex];
+            });
+          }
+        }
       } catch (e) {
+        print('Error loading stored mood: $e');
         if (!mounted) return;
         setState(() {
           isLoading = false;
-          status[analyseIndexMood] = [0, 0];
+          mood[analyseIndexMood] = [0, 0];
         });
       }
-    });
+    }
   }
 
-  Future<void> _refreshAttention(String context, {int? index}) async {
+  Future<void> _refreshAttention(String context, {int? index, bool requestAi = true}) async {
     final analyseIndexAttention = index ?? analyseIndex;
 
     if (!mounted) return;
     setState(() {
       isloadingAttention = true;
     });
-
-    await GeminiService(chatModel: _analyseChatModel).getAttentionAnalysis(context).then((value) {
-      try {
-        Map<String, int> parsedData = {};
-        String cleanedValue = value.trim();
-        if (cleanedValue.startsWith('```')) {
-          cleanedValue = cleanedValue
-              .replaceAll(RegExp(r'```json\s*'), '')
-              .replaceAll(RegExp(r'```\s*'), '')
-              .trim();
-        }
+    
+    if (requestAi) {
+      await GeminiService(chatModel: _attentionModel).getAttentionAnalysis(context).then((value) {
         try {
-          final Map<String, dynamic> jsonData = jsonDecode(cleanedValue);
-          jsonData.forEach((key, value) {
-            parsedData[key] = value is int ? value : int.tryParse(value.toString()) ?? 0;
+          Map<String, int> parsedData = {};
+          String cleanedValue = value.trim();
+          if (cleanedValue.startsWith('```')) {
+            cleanedValue = cleanedValue
+                .replaceAll(RegExp(r'```json\s*'), '')
+                .replaceAll(RegExp(r'```\s*'), '')
+                .trim();
+          }
+          try {
+            final Map<String, dynamic> jsonData = jsonDecode(cleanedValue);
+            jsonData.forEach((key, value) {
+              parsedData[key] = value is int ? value : int.tryParse(value.toString()) ?? 0;
+            });
+          } catch (jsonError) {
+            String cleaned = cleanedValue.replaceAll(RegExp(r'[{}]'), '').trim();
+            List<String> pairs = cleaned.split(',');
+
+            for (String pair in pairs) {
+              List<String> keyValue = pair.split(':');
+              if (keyValue.length == 2) {
+                String key = keyValue[0].trim().replaceAll('"', '');
+                int val = int.tryParse(keyValue[1].trim()) ?? 0;
+                parsedData[key] = val;
+              }
+            }
+          }
+          if (!mounted) return;
+          setState(() {
+            isloadingAttention = false;
+            attentionData[analyseIndexAttention] = parsedData;
           });
-        } catch (jsonError) {
+
+          if (index == 0) {
+            firestoreService.updateDailyAttention(userId, '$parsedData');
+          } else if (index == 1) {
+            firestoreService.updateWeeklyAttention(userId, '$parsedData');
+          }
+
+        } catch (e) {
+          print("Error decoding attention analysis: $e");
+          print("Response was: $value");
+          if (!mounted) return;
+          setState(() {
+            isloadingAttention = false;
+            attentionData[analyseIndexAttention] = {};
+          });
+        }
+      });
+    } else {
+      try {
+        final storedAttention = await firestoreService.getUserAttention(userId, index == 0 ? 'dailyAttention' : 'weeklyAttention');
+        if (storedAttention.isNotEmpty){
+          Map<String, int> parsedData = {};
+          String cleanedValue = storedAttention.trim();
           String cleaned = cleanedValue.replaceAll(RegExp(r'[{}]'), '').trim();
           List<String> pairs = cleaned.split(',');
 
@@ -372,23 +283,49 @@ Return ONLY a JSON object with no other text:''';
               parsedData[key] = val;
             }
           }
+          if (!mounted) return;
+          setState(() {
+            isloadingAttention = false;
+            attentionData[analyseIndexAttention] = parsedData;
+          });
         }
-        if (!mounted) return;
-        setState(() {
-          isloadingAttention = false;
-          attentionData[analyseIndexAttention] = parsedData;
-        });
-
       } catch (e) {
-        print("Error decoding attention analysis: $e");
-        print("Response was: $value");
+        print('Error loading stored attention: $e');
         if (!mounted) return;
         setState(() {
           isloadingAttention = false;
           attentionData[analyseIndexAttention] = {};
         });
       }
-    });
+    }
+  }
+
+  Future<void> _updateWeeklyMoodAndAttention({bool requestAi = true}) async {
+    try {
+      final context = await _getDiaryContext('weekly');
+      if (!mounted) return;
+      // Run mood and attention analysis in parallel instead of sequentially
+      await Future.wait([
+        _refreshMood(context, index: 1, requestAi: requestAi),
+        _refreshAttention(context, index: 1, requestAi: requestAi),
+      ]);
+    } catch (e) {
+      print('Error updating weekly mood and attention: $e');
+    }
+  }
+
+  Future<void> _updateDailyMoodAndAttention({bool requestAi = true}) async {
+    try {
+      final context = await _getDiaryContext('daily');
+      if (!mounted) return;
+      // Run mood and attention analysis in parallel instead of sequentially
+      await Future.wait([
+        _refreshMood(context, index: 0, requestAi: requestAi),
+        _refreshAttention(context, index: 0, requestAi: requestAi),
+      ]);
+    } catch (e) {
+      print('Error updating daily mood and attention: $e');
+    }
   }
 
 
@@ -448,12 +385,12 @@ Return ONLY a JSON object with no other text:''';
                         SizedBox(
                           height: 15,
                         ),
-                        newDiaryButton(context, width: maxWidth),
+                        diaryButton(context, height: 180, width: maxWidth, text: "New Diary"),
                         SizedBox(
                           height: 30,
                         ),
                         if (createdNewDiaryToday) 
-                          editDiaryButton(context, width: maxWidth)
+                          diaryButton(context, height: 110, width: maxWidth, text: "Edit Previous Diary")
                         else
                           Container(
                             width: maxWidth,
@@ -522,7 +459,7 @@ Return ONLY a JSON object with no other text:''';
                               SizedBox(height: 20),
                               if (isloadingAttention)
                                 CircularProgressIndicator()
-                              else if (attentionData.isNotEmpty)
+                              else
                                 _buildAttentionChart(),
                             ],
                           ),
@@ -569,7 +506,7 @@ Return ONLY a JSON object with no other text:''';
                 height: maxWidth * 0.45,
                 child: Container(
                   decoration: BoxDecoration(
-                    color: !createdNewDiaryToday && analyseIndex == 0 ? Color.fromARGB(255, 100, 100, 100): healthColors[status[analyseIndex][0]] ,
+                    color: (createdNewDiaryToday && analyseIndex == 0) || (analyseIndex == 1 && attentionData[1].isNotEmpty) ? healthColors[mood[analyseIndex][0]]: Color.fromARGB(255, 100, 100, 100) ,
                     borderRadius: BorderRadius.circular(30),
                   ),
                   child: Material(
@@ -583,9 +520,9 @@ Return ONLY a JSON object with no other text:''';
                         child: isLoading ? Center(child: CircularProgressIndicator(color: Colors.white)) : Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            FaIcon(createdNewDiaryToday || analyseIndex == 1 ? healthIcons[status[analyseIndex][0]] : Icons.question_mark, color: const Color.fromARGB(255, 255, 255, 255), size: maxWidth * 0.15), 
+                            FaIcon((createdNewDiaryToday && analyseIndex == 0) || (analyseIndex == 1 && attentionData[1].isNotEmpty) ? healthIcons[mood[analyseIndex][0]] : Icons.question_mark, color: const Color.fromARGB(255, 255, 255, 255), size: maxWidth * 0.15), 
                             Padding(padding:  EdgeInsets.only(bottom: maxWidth * 0.02)), 
-                            Text(createdNewDiaryToday || analyseIndex == 1 ? healthStatuses[status[analyseIndex][0]] : "No data", style: TextStyle(fontSize: maxWidth * 0.05, color: const Color.fromARGB(255, 255, 255, 255), fontWeight: FontWeight.bold)),
+                            Text((createdNewDiaryToday && analyseIndex == 0) || (analyseIndex == 1 && attentionData[1].isNotEmpty) ? healthStatuses[mood[analyseIndex][0]] : "No data", style: TextStyle(fontSize: maxWidth * 0.05, color: const Color.fromARGB(255, 255, 255, 255), fontWeight: FontWeight.bold)),
                           ],
                         ),
                       ),
@@ -594,14 +531,14 @@ Return ONLY a JSON object with no other text:''';
                 ),
               ),
               SizedBox(
-                width: maxWidth * 0.125,
+                width: maxWidth * 0.105,
               ),
               SizedBox(
                 width: maxWidth * 0.45,
                 height: maxWidth * 0.45,
                 child: Container(
                   decoration: BoxDecoration(
-                    color: !createdNewDiaryToday && analyseIndex == 0 ?Color.fromARGB(255, 100, 100, 100): emotionColors[status[analyseIndex][1]] ,
+                    color: (createdNewDiaryToday && analyseIndex == 0) || (analyseIndex == 1 && attentionData[1].isNotEmpty) ? emotionColors[mood[analyseIndex][1]] : Color.fromARGB(255, 100, 100, 100),
                     borderRadius: BorderRadius.circular(30),
                   ),
                   child: Material(
@@ -615,9 +552,9 @@ Return ONLY a JSON object with no other text:''';
                         child: isLoading ? Center(child: CircularProgressIndicator(color: Colors.white)) : Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            FaIcon(createdNewDiaryToday || analyseIndex == 1 ? emotionIcons[status[analyseIndex][1]] : Icons.question_mark, color: const Color.fromARGB(255, 255, 255, 255), size: maxWidth * 0.15), 
+                            FaIcon((createdNewDiaryToday && analyseIndex == 0) || (analyseIndex == 1 && attentionData[1].isNotEmpty) ? emotionIcons[mood[analyseIndex][1]] : Icons.question_mark, color: const Color.fromARGB(255, 255, 255, 255), size: maxWidth * 0.15), 
                             Padding(padding:  EdgeInsets.only(bottom: maxWidth * 0.02)), 
-                            Text(createdNewDiaryToday || analyseIndex == 1 ? emotionStatus[status[analyseIndex][1]] : "No data", style: TextStyle(fontSize: maxWidth * 0.05, color: const Color.fromARGB(255, 255, 255, 255), fontWeight: FontWeight.bold)),
+                            Text((createdNewDiaryToday && analyseIndex == 0) || (analyseIndex == 1 && attentionData[1].isNotEmpty) ? emotionStatuses[mood[analyseIndex][1]] : "No data", style: TextStyle(fontSize: maxWidth * 0.05, color: const Color.fromARGB(255, 255, 255, 255), fontWeight: FontWeight.bold)),
                           ],
                         ),
                       ),
@@ -663,7 +600,7 @@ Return ONLY a JSON object with no other text:''';
   }
 
   Widget _buildAttentionChart(){
-    if (attentionData.length <= analyseIndex || attentionData[analyseIndex].isEmpty) {
+    if (attentionData.length <= analyseIndex || attentionData[analyseIndex] == {'Error': 0} || attentionData[analyseIndex].isEmpty) {
       return SizedBox.shrink();
     }
     
@@ -789,7 +726,7 @@ Return ONLY a JSON object with no other text:''';
                       Text(
                         data.key,
                         style: TextStyle(
-                          fontSize: 13,
+                          fontSize: 10,
                           fontWeight: FontWeight.w600,
                           color: Colors.black87,
                         ),
@@ -814,16 +751,16 @@ Return ONLY a JSON object with no other text:''';
     );
   }
 
-  SizedBox newDiaryButton(BuildContext context, {required double width}) {
+  SizedBox diaryButton(BuildContext context, {required double height, required double width, required String text}) {
     return SizedBox(
-      height: 180,
+      height: height,
       width: width,
       child: 
         ElevatedButton(
           onPressed: () {
             Navigator.push(
               context,
-              MaterialPageRoute(builder: (context) => NewDiary()),
+              MaterialPageRoute(builder: (context) => text == 'New Diary' ? NewDiary() : NewDiary(previousDiaryController: previousDiaryController, previousImageUrls: imageUrls, diaryId: diaryId, previousTitle: previousTitle)),
             );
           },
           style: ElevatedButton.styleFrom(
@@ -843,48 +780,7 @@ Return ONLY a JSON object with no other text:''';
                 size: 60,
               ),
               Text(
-                'New Diary',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontFamily: "Lobstertwo"
-                ),
-              ),
-            ],
-          ),
-        ),
-    );
-  }
-
-  SizedBox editDiaryButton(BuildContext context, {required double width}) {
-    return SizedBox(
-      height: 110,
-      width: width,
-      child: 
-        ElevatedButton(
-          onPressed: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (context) => NewDiary(previousDiaryController: _previousDiaryController, previousImageUrls: imageUrls, diaryId: diaryId, previousTitle: previousTitle)),
-            );
-          },
-          style: ElevatedButton.styleFrom(
-            backgroundColor: Color(0xffffffff),
-            foregroundColor: const Color.fromARGB(255, 61, 61, 61),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10), // Adjust the radius as needed
-            ),
-            elevation: 5,
-            shadowColor: Color.fromARGB(255, 161, 161, 161)
-          ),
-          child:Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                Icons.edit,
-                size: 50,
-              ),
-              Text(
-                'Edit Previous Diary',
+                text,
                 style: TextStyle(
                   fontSize: 20,
                   fontFamily: "Lobstertwo"

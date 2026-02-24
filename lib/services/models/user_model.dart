@@ -10,6 +10,10 @@ class UserModel {
   final int totalDiaryPosted;
   final DateTime? lastPostDate;
   final DateTime? lastStreakUpdateDate;
+  final String? dailyMood;
+  final String? dailyAttention;
+  final String? weeklyMood;
+  final String? weeklyAttention;
 
   UserModel({
     required this.uid,
@@ -21,6 +25,10 @@ class UserModel {
     this.totalDiaryPosted = 0,
     this.lastPostDate,
     this.lastStreakUpdateDate,
+    this.dailyMood,
+    this.dailyAttention,
+    this.weeklyMood,
+    this.weeklyAttention
   });
 
   // Firestore data -> UserModel
@@ -40,6 +48,10 @@ class UserModel {
       lastStreakUpdateDate: data['lastStreakUpdateDate'] != null
           ? (data['lastStreakUpdateDate'] as Timestamp).toDate()
           : null,
+      dailyMood: data['dailyMood'] ?? '',
+      dailyAttention: data['dailyAttention'] ?? '',
+      weeklyMood: data['weeklyMood'] ?? '',
+      weeklyAttention: data['weeklyAttention'] ?? ''
     );
   }
 
@@ -55,6 +67,10 @@ class UserModel {
       'totalDiaryPosted': totalDiaryPosted,
       'lastPostDate': lastPostDate != null ? Timestamp.fromDate(lastPostDate!) : null,
       'lastStreakUpdateDate': lastStreakUpdateDate != null ? Timestamp.fromDate(lastStreakUpdateDate!) : null,
+      'dailyMood': dailyMood ?? '',
+      'dailyAttention': dailyAttention ?? '',
+      'weeklyMood': weeklyMood ?? '',
+      'weeklyAttention': weeklyAttention ?? ''
     };
   }
 
@@ -68,6 +84,10 @@ class UserModel {
     int? totalDiaryPosted,
     DateTime? lastPostDate,
     DateTime? lastStreakUpdateDate,
+    String? dailyMood,
+    String? dailyAttention,
+    String? weeklyMood,
+    String? weeklyAttention
   }) {
     return UserModel(
       uid: uid ?? this.uid,
@@ -79,6 +99,10 @@ class UserModel {
       totalDiaryPosted: totalDiaryPosted ?? this.totalDiaryPosted,
       lastPostDate: lastPostDate ?? this.lastPostDate,
       lastStreakUpdateDate: lastStreakUpdateDate ?? this.lastStreakUpdateDate,
+      dailyMood: dailyMood ?? this.dailyMood,
+      dailyAttention: dailyAttention ?? this.dailyAttention,
+      weeklyMood: weeklyMood ?? this.weeklyMood,
+      weeklyAttention: weeklyAttention ?? this.weeklyAttention
     );
   }
 }

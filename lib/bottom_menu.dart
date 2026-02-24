@@ -4,7 +4,7 @@ import 'package:diaryapp/services/firestore_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
-import 'pages/home_page.dart';
+import 'pages/home_page/home_page.dart';
 import 'pages/profile_page.dart';
 import 'pages/diary_sum.dart';
 import 'pages/ai_summary.dart';
@@ -40,6 +40,17 @@ class _Bottommenustate extends State<BottomMenu>{
     }
   }
 
+  Future<void> _checkIfCreatedNewDiaryToday() async {
+    final newestDiary = await firestoreService.getNewestDiaryDetail(userId!);
+    DateTime? newestDate = newestDiary?.created;
+    previousDiaryController.text = newestDiary?.context ?? '';
+
+    if (!mounted) return ;
+    setState(() {
+      createdNewDiaryToday = newestDate != null && DateUtils.isSameDay(newestDate, DateTime.now());
+    });
+  }
+
   Widget _navbutton({
     required int index,
     required IconData icon,
@@ -57,6 +68,9 @@ class _Bottommenustate extends State<BottomMenu>{
           });
           if (index == 2) {
             _cameraPage();
+          }
+          if (index == 0) {
+            _checkIfCreatedNewDiaryToday();
           }
         },
         child: AnimatedContainer(

@@ -211,6 +211,76 @@ class FirestoreService {
     }
   }
 
+  Future<void> updateDailyMood(String uid, String mood) async {
+    try {
+      await usersCollection.doc(uid).update({
+        'dailyMood': mood,
+      });
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  Future<void> updateDailyAttention(String uid, String attention) async {
+    try {
+      await usersCollection.doc(uid).update({
+        'dailyAttention': attention,
+      });
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  Future<void> updateWeeklyMood(String uid, String mood) async {
+    try {
+      await usersCollection.doc(uid).update({
+        'weeklyMood': mood,
+      });
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  Future<void> updateWeeklyAttention(String uid, String attention) async {
+    try {
+      await usersCollection.doc(uid).update({
+        'weeklyAttention': attention,
+      });
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  Future<String> getuserMood(String uid, String moodType) async {
+    try {
+      final userData = await getUserData(uid);
+      if (moodType == 'dailyMood') {
+        return userData?.dailyMood ?? '';
+      } else if (moodType == 'weeklyMood') {
+        return userData?.weeklyMood ?? '';
+      } else {
+        throw Exception('Invalid mood type');
+      }
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  Future<String> getUserAttention(String uid, String attentionType) async {
+    try {
+      final userData = await getUserData(uid);
+      if (attentionType == 'dailyAttention') {
+        return userData?.dailyAttention ?? '';
+      } else if (attentionType == 'weeklyAttention') {
+        return userData?.weeklyAttention ?? '';
+      } else {
+        throw Exception('Invalid attention type');
+      }
+    } catch (e) {
+      rethrow;
+    }
+  }
+
   // ==================== DIARY ENTRIES OPERATIONS ====================
 
   /// Add a new diary entry
