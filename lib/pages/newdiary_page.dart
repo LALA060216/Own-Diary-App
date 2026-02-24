@@ -28,6 +28,7 @@ class NewDiary extends StatefulWidget{
 
 class _NewDiaryState extends State<NewDiary> {
   static final RegExp _inlineImageTokenPattern = RegExp(r'\[img:(\d+)\]');
+  static const int _maxImagesPerDiary = 3;
 
   final List<File> _images = [];
   final ImagePicker _picker = ImagePicker();
@@ -322,10 +323,30 @@ class _NewDiaryState extends State<NewDiary> {
   }
 
   Future<void> pickImages() async {
+    final currentImageCount = previousImageUrls.length + _images.length;
+    
+    if (currentImageCount >= _maxImagesPerDiary) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Maximum $_maxImagesPerDiary images per diary')),
+      );
+      return;
+    }
+    
     final List<XFile> pickedFiles = await _picker.pickMultiImage();
     if (pickedFiles.isEmpty) return;
+    
+    final remainingSlots = _maxImagesPerDiary - currentImageCount;
+    final filesToAdd = pickedFiles.take(remainingSlots).toList();
+    
+    if (pickedFiles.length > remainingSlots && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Only $remainingSlots more image(s) allowed (max $_maxImagesPerDiary per diary)')),
+      );
+    }
+    
     final startIndex = previousImageUrls.length + _images.length;
-    final picked = pickedFiles.map((file) => File(file.path)).toList();
+    final picked = filesToAdd.map((file) => File(file.path)).toList();
     if (!mounted) return;
     setState(() {
       _images.addAll(picked);
@@ -338,6 +359,16 @@ class _NewDiaryState extends State<NewDiary> {
   }
 
   Future<void> openCameraPageAndUpload() async {
+    final currentImageCount = previousImageUrls.length + _images.length;
+    
+    if (currentImageCount >= _maxImagesPerDiary) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Maximum $_maxImagesPerDiary images per diary')),
+      );
+      return;
+    }
+    
     final XFile? capturedImage = await _picker.pickImage(
       source: ImageSource.camera,
       imageQuality: 100,
@@ -629,7 +660,13 @@ class _NewDiaryState extends State<NewDiary> {
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
                 GestureDetector(
-                  onTap: pickImages,
+                  onTap: () {
+                    final currentImageCount = previousImageUrls.length + _images.length;
+                    if (currentImageCount >= _maxImagesPerDiary) {
+                      return;
+                    }
+                    pickImages();
+                  },
                   child: Icon(Icons.add),
                 ),
                 Divider(
@@ -638,8 +675,12 @@ class _NewDiaryState extends State<NewDiary> {
                   color: Color(0xffEDEADE),
                 ),
                 GestureDetector(
-                  onTap: () async {
-                    await openCameraPageAndUpload();
+                  onTap: () {
+                    final currentImageCount = previousImageUrls.length + _images.length;
+                    if (currentImageCount >= _maxImagesPerDiary) {
+                      return;
+                    }
+                    openCameraPageAndUpload();
                   },
                   child: Icon(Icons.camera_alt, size: 30, color: Colors.black54),
                 )
@@ -757,12 +798,21 @@ class _NewDiaryState extends State<NewDiary> {
               width: double.infinity,
               padding: const EdgeInsets.fromLTRB(12, 0, 12, 10),
               child: Wrap(
-                spacing: 6,
-                runSpacing: 6,
+                spacing: 8,
+                runSpacing: 8,
+                alignment: WrapAlignment.spaceEvenly,
                 children: List.generate(_allImagePaths().length, (index) {
                   return OutlinedButton(
                     onPressed: () => _insertImageTokenAtCursor(index),
-                    child: Text('Insert img ${index + 1}'),
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                      minimumSize: Size.zero,
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    ),
+                    child: Text(
+                      'Insert img ${index + 1}',
+                      style: const TextStyle(fontSize: 13),
+                    ),
                   );
                 }),
               ),
