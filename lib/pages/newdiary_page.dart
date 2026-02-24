@@ -10,6 +10,7 @@ import 'package:diaryapp/services/models/ai_chat_model.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:diaryapp/pages/moments/moments.dart';
 
 import 'ai_content_options_dialog.dart';
 import 'full_screen_image_page.dart';
@@ -36,6 +37,7 @@ class _NewDiaryState extends State<NewDiary> {
   final _firestoreService = FirestoreService();
   final _firebaseStorageService = FirebaseStorageService();
   final _userId = FirebaseAuth.instance.currentUser!.uid;
+  
 
   final DateTime date = DateTime.now();
   final TextEditingController _diaryController = TextEditingController();
@@ -51,12 +53,12 @@ class _NewDiaryState extends State<NewDiary> {
   bool error = false;
   String errorMessage = 'Failed to upload image';
   final chatModel = AIChatModel(
-      prompt: 'You are a helpful assistant that generates keywords based on the diary entry. Extract between 1 to 5 numbers of keywords from the following diary entry and return them ONLY as a JSON array of strings with no additional text or explanation. Example format: ["keyword1", "keyword2", "keyword3", "keyword4", "keyword5"]\nIf have any forbidden content, just return a empty list\n',
-      model: 'gemma-3-27b-it'
+      prompt: 'You are a helpful assistant that generates keywords based on the diary entry. Extract between 0 to 30 numbers of keywords from the following diary entry and return them ONLY as a JSON array of strings with no additional text or explanation. Example format: ["keyword1", "keyword2", "keyword3", "keyword4", "keyword5"]\nIf have any forbidden content, just return a empty list\n',
+      model: 'gemini-2.5-flash-lite'
     );
   final titleChatModel = AIChatModel(
       prompt: 'Generate one short diary title based on the diary content. Keep it natural, specific, and between 3 to 8 words. Return ONLY the title text without quotes, labels, markdown, or extra explanation.',
-      model: 'gemma-3-27b-it'
+      model: 'gemini-2.5-flash-lite'
     );
 
   Timer? _titleDebounceTimer;
@@ -528,7 +530,41 @@ class _NewDiaryState extends State<NewDiary> {
     final diaryTextAtDispose = _diaryController.text.trim();
     final titleAtDispose = _titleController.text.trim();
     final entryIdAtDispose = _id;
+    final imageUrlsAtDispose = List<String>.from(imageUrls);
 
+    // Only trigger AI classification and keyword extraction if we have a valid diary entry with content
+    if (entryIdAtDispose.isNotEmpty && (diaryTextAtDispose.isNotEmpty || imageUrlsAtDispose.isNotEmpty || previousImageUrls.isNotEmpty)) {
+      // Process each image for moments classification
+      if (imageUrlsAtDispose.isNotEmpty) {
+        for (final imageUrl in imageUrlsAtDispose) {
+          if (imageUrl.trim().isEmpty) continue;
+          
+          // Create moment functions for this specific image
+          final momentFunctions = MomentFunctions(
+            userId: _userId,
+            firestoreService: _firestoreService,
+            diaryContext: diaryTextAtDispose,
+            diaryImageUrls: [imageUrl],
+            diaryId: entryIdAtDispose,
+          );
+          
+          // Classify and store moments for this image
+          momentFunctions.classifyMomentWithAi().then((category) async {
+            try {
+              final moments = category.isNotEmpty ? category : '';
+              await _firestoreService.createOrUpdateMomentEntry(
+                diaryId: entryIdAtDispose,
+                userId: _userId,
+                imageUrl: imageUrl,
+                moments: moments,
+              );
+            } catch (_) {
+              // Ignore failures to update category
+            }
+          });
+        }
+      }
+    }
     // Generate title in background without touching disposed controllers
     _titleDebounceTimer?.cancel();
     if (!_isTitleManuallyEdited && diaryTextAtDispose.length >= 20 && titleAtDispose.isEmpty) {
@@ -541,6 +577,7 @@ class _NewDiaryState extends State<NewDiary> {
           await _firestoreService.updateDiaryEntryTitle(
             entryId: entryIdAtDispose,
             newTitle: title,
+
           );
         }
       });

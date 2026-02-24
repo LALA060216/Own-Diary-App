@@ -5,6 +5,7 @@ import 'package:diaryapp/services/firebase_storage_service.dart';
 import 'package:flutter/material.dart';
 import 'models/diary_entry_model.dart';
 import 'models/user_model.dart';
+import 'models/moments_model.dart';
 
 class FirestoreService {
   final FirebaseFirestore firestore = FirebaseFirestore.instance;
@@ -18,12 +19,132 @@ class FirestoreService {
   CollectionReference<Map<String, dynamic>> get diaryEntriesCollection =>
       firestore.collection('diaryEntries');
 
-  CollectionReference<Map<String, dynamic>> get unfinishDiaryEntriesCollection =>
-      firestore.collection('unfinishDiaryEntries');
+  CollectionReference<Map<String, dynamic>> get momentsCollection =>
+      firestore.collection('moments');
+
+  // ==================== MOMENTS OPERATIONS ====================
+
+  /// Check if an image URL already has moments
+  Future<MomentsModel?> getMomentByImageUrl(String userId, String imageUrl) async {
+    try {
+      final snapshot = await momentsCollection
+          .where('userId', isEqualTo: userId)
+          .where('imageUrl', isEqualTo: imageUrl)
+          .limit(1)
+          .get();
+      
+      if (snapshot.docs.isNotEmpty) {
+        return MomentsModel.fromFirestore(snapshot.docs.first);
+      }
+      return null;
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  /// Create moments entry for an image
+  Future<String> createMomentEntry({
+    required String diaryId,
+    required String userId,
+    required String imageUrl,
+    String moments = '',
+  }) async {
+    final newEntry = MomentsModel(
+      id: '',
+      diaryId: diaryId,
+      userId: userId,
+      imageUrl: imageUrl,
+      moments: moments,
+    );
+    try {
+      final docRef = await momentsCollection.add(newEntry.toFireStore());
+      return docRef.id;
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  /// Update moments for an image
+  Future<void> updateMomentEntry({
+    required String momentId,
+    required String moments,
+  }) async {
+    try {
+      await momentsCollection.doc(momentId).update({
+        'moments': moments,
+      });
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  /// Delete moments entry
+  Future<void> deleteMomentEntry(String momentId) async {
+    try {
+      await momentsCollection.doc(momentId).delete();
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  /// Delete all moments for a diary entry
+  Future<void> deleteMomentsForDiary(String diaryId) async {
+    try {
+      final snapshot = await momentsCollection
+          .where('diaryId', isEqualTo: diaryId)
+          .get();
+      
+      for (final doc in snapshot.docs) {
+        await doc.reference.delete();
+      }
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  /// Get all moments for a user
+  Stream<List<MomentsModel>> getUserMomentsStream(String userId) {
+    return momentsCollection
+        .where('userId', isEqualTo: userId)
+        .snapshots()
+        .map((snapshot) => snapshot.docs
+            .map((doc) => MomentsModel.fromFirestore(doc))
+            .toList());
+  }
+
+  /// Create or update moment entry for an image (only if not exists)
+  Future<void> createOrUpdateMomentEntry({
+    required String diaryId,
+    required String userId,
+    required String imageUrl,
+    required String moments,
+  }) async {
+    try {
+      // Check if moment already exists for this image
+      final existing = await getMomentByImageUrl(userId, imageUrl);
+      
+      if (existing == null) {
+        // Create new moment entry
+        await createMomentEntry(
+          diaryId: diaryId,
+          userId: userId,
+          imageUrl: imageUrl,
+          moments: moments,
+        );
+      } else if (existing.moments.isEmpty && moments.isNotEmpty) {
+        // Update only if existing has no moments and we have new ones
+        await updateMomentEntry(
+          momentId: existing.id,
+          moments: moments,
+        );
+      }
+      // If existing already has moments, don't change anything
+    } catch (e) {
+      rethrow;
+    }
+  }
 
   // ==================== USER OPERATIONS ====================
-
-  /// Create a new user document when they sign up
   Future<void> createUserDocument({
     required String uid,
     required String email,

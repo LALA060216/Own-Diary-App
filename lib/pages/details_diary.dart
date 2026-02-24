@@ -321,7 +321,7 @@ class _DetailsDiaryState extends State<DetailsDiary> {
         
         final chatModelForDescription = AIChatModel(
           prompt: imgDescriptionPrompt,
-          model: 'gemini-2.0-flash-exp',
+          model: 'gemini-2.5-flash',
         );
         
         imageDescription = await GeminiService(chatModel: chatModelForDescription)
@@ -338,7 +338,7 @@ class _DetailsDiaryState extends State<DetailsDiary> {
       final promptInput = options.buildPrompt(imageDescription: imageDescription);
       final chatModelForGeneration = AIChatModel(
         prompt: 'You are a helpful diary writing assistant.',
-        model: 'gemma-3-27b-it',
+        model: 'gemini-2.5-flash-lite',
       );
 
       generated = await GeminiService(chatModel: chatModelForGeneration).sendMessage(promptInput);

@@ -6,9 +6,8 @@ import 'package:flutter/services.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/intl.dart';
 import '../services/firestore_service.dart';
-import '../services/gemini_service.dart';
-import '../services/models/ai_chat_model.dart';
 import '../services/models/diary_entry_model.dart';
+import '../services/models/moments_model.dart';
 import 'details_diary.dart';
 
 class _MomentCategory {
@@ -477,41 +476,6 @@ class _DiariesState extends State<Diaries> {
     _MomentCategory(key: 'moments', label: 'Moments', icon: Icons.auto_awesome),
   ];
 
-  static const Map<String, List<String>> _categoryKeywords = {
-    'food_buddy': ['food', 'meal', 'restaurant', 'cafe', 'dinner', 'lunch', 'breakfast', 'snack', 'cook', 'coffee'],
-    'funny_moment': ['funny', 'lol', 'joke', 'laugh', 'humor', 'hilarious'],
-    'travel_memory': ['travel', 'trip', 'vacation', 'flight', 'hotel', 'beach', 'journey', 'tour'],
-    'study_day': ['study', 'school', 'class', 'exam', 'homework', 'assignment', 'campus', 'lecture'],
-    'work_life': ['work', 'office', 'meeting', 'deadline', 'project', 'client', 'business', 'job'],
-    'fitness': ['gym', 'workout', 'fitness', 'run', 'running', 'sport', 'exercise', 'training'],
-    'family_time': ['family', 'mom', 'dad', 'parents', 'sister', 'brother', 'home'],
-    'friend_vibes': ['friend', 'bestie', 'hangout', 'buddy', 'crew'],
-    'romance': ['love', 'date', 'romance', 'boyfriend', 'girlfriend', 'partner'],
-    'pet_time': ['pet', 'dog', 'cat', 'puppy', 'kitten'],
-    'night_thoughts': ['night', 'midnight', 'late', 'insomnia'],
-    'music_movie': ['music', 'song', 'movie', 'film', 'cinema', 'playlist'],
-    'nature_walk': ['nature', 'park', 'mountain', 'hike', 'forest', 'sunset'],
-    'self_growth': ['goal', 'growth', 'improve', 'discipline', 'habit', 'progress'],
-  };
-
-  static const List<String> _classifiableMomentKeys = [
-    'food_buddy',
-    'funny_moment',
-    'travel_memory',
-    'study_day',
-    'work_life',
-    'fitness',
-    'family_time',
-    'friend_vibes',
-    'romance',
-    'pet_time',
-    'night_thoughts',
-    'music_movie',
-    'nature_walk',
-    'self_growth',
-    'moments',
-  ];
-
   DateTime selectedDate = DateTime.now();
   DateTime? selectedDay;
   String titleQuery = '';
@@ -523,12 +487,11 @@ class _DiariesState extends State<Diaries> {
 
   String? userId;
   Stream<List<DiaryEntryModel>>? diaryStream;
-  StreamSubscription<List<DiaryEntryModel>>? _momentsSubscription;
+  Stream<List<MomentsModel>>? momentsStream;
+  StreamSubscription<List<DiaryEntryModel>>? _diarySubscription;
+  StreamSubscription<List<MomentsModel>>? _momentsSubscription;
   List<DiaryEntryModel> _allDiaries = [];
-  final Map<String, String> _aiMomentByDiaryId = {};
-  final Set<String> _classifyingDiaryIds = {};
-  bool _isClassifyingMoments = false;
-  bool _classificationRerunRequested = false;
+  List<MomentsModel> _allMoments = [];
 
   void _safeSetState(VoidCallback fn) {
     if (!mounted) return;
@@ -551,291 +514,73 @@ class _DiariesState extends State<Diaries> {
 
     if (user != null) {
       userId = user.uid;
-      diaryStream =
-      firestoreService.getUserDiaryEntriesStream(userId!);
-      _momentsSubscription = diaryStream!.listen((entries) {
+      diaryStream = firestoreService.getUserDiaryEntriesStream(userId!);
+      momentsStream = firestoreService.getUserMomentsStream(userId!);
+      
+      _diarySubscription = diaryStream!.listen((entries) {
         if (!mounted) return;
         _safeSetState(() {
           _allDiaries = entries;
         });
-        unawaited(_classifyImageMoments(entries));
       }, onError: (_) {
         if (!mounted) return;
         _safeSetState(() {
           _allDiaries = [];
         });
       });
+      
+      _momentsSubscription = momentsStream!.listen((moments) {
+        if (!mounted) return;
+        _safeSetState(() {
+          _allMoments = moments;
+        });
+      }, onError: (_) {
+        if (!mounted) return;
+        _safeSetState(() {
+          _allMoments = [];
+        });
+      });
     }
   }
 
-  bool _isNetworkUrl(String value) {
-    final uri = Uri.tryParse(value.trim());
-    return uri != null && (uri.scheme == 'http' || uri.scheme == 'https');
-  }
-
-  String _normalizeAiCategory(String raw) {
-    return raw
-      .toLowerCase()
-      .trim()
-      .replaceAll(RegExp(r'[\s-]+'), '_')
-      .replaceAll(RegExp(r'[^a-z_]'), '')
-      .replaceAll(RegExp(r'_+'), '_')
-      .replaceAll(RegExp(r'^_|_$'), '');
-  }
-
-  bool _containsTerm(String text, String term) {
-    final escaped = RegExp.escape(term.toLowerCase());
-    final expression = term.contains(' ')
-        ? escaped.replaceAll(r'\ ', r'\s+')
-        : '\\b$escaped\\b';
-    return RegExp(expression, caseSensitive: false).hasMatch(text);
-  }
-
-  int _scoreTextAgainstTerms(String text, List<String> terms) {
-    int score = 0;
-    for (final term in terms) {
-      if (_containsTerm(text, term)) {
-        score++;
-      }
-    }
-    return score;
-  }
-
-  String _mapLooseCategoryFromText(String raw) {
-    final text = raw.toLowerCase();
-    final extraTerms = <String, List<String>>{
-      'food_buddy': ['food', 'meal', 'restaurant', 'cafe', 'dining'],
-      'funny_moment': ['funny', 'humor', 'joke', 'laugh'],
-      'travel_memory': ['travel', 'trip', 'vacation', 'tour', 'journey'],
-      'study_day': ['study', 'school', 'exam', 'homework', 'assignment'],
-      'work_life': ['work', 'office', 'business', 'coding', 'developer', 'project'],
-      'fitness': ['fitness', 'gym', 'workout', 'exercise', 'sport'],
-      'family_time': ['family', 'parents', 'siblings'],
-      'friend_vibes': ['friend', 'friends', 'bestie', 'hangout'],
-      'romance': ['romance', 'love', 'date', 'partner'],
-      'pet_time': ['pet', 'dog', 'cat', 'puppy', 'kitten'],
-      'night_thoughts': ['night', 'midnight', 'late night'],
-      'music_movie': ['music', 'song', 'movie', 'film', 'cinema'],
-      'nature_walk': ['nature', 'park', 'forest', 'mountain', 'hike'],
-      'self_growth': ['growth', 'goal', 'discipline', 'improve', 'progress'],
-    };
-
-    String bestCategory = 'moments';
-    int bestScore = 0;
-    bool hasTie = false;
-
-    for (final key in _classifiableMomentKeys.where((k) => k != 'moments')) {
-      final terms = [
-        ...(_categoryKeywords[key] ?? const <String>[]),
-        ...(extraTerms[key] ?? const <String>[]),
-      ];
-      final score = _scoreTextAgainstTerms(text, terms);
-      if (score > bestScore) {
-        bestScore = score;
-        bestCategory = key;
-        hasTie = false;
-      } else if (score > 0 && score == bestScore) {
-        hasTie = true;
-      }
-    }
-
-    if (bestScore == 0 || hasTie) return 'moments';
-    return bestCategory;
-  }
-
-  String _extractCategoryFromAiResponse(String raw) {
-    final lower = raw.toLowerCase().trim();
-
-    for (final key in _classifiableMomentKeys) {
-      final pattern = RegExp(
-        '(?:^|[^a-z])${RegExp.escape(key).replaceAll('_', r'[\\s_-]*')}(?:[^a-z]|\$)',
-        caseSensitive: false,
-      );
-      if (pattern.hasMatch(lower)) {
-        return key;
-      }
-    }
-
-    final normalized = _normalizeAiCategory(lower);
-    if (_classifiableMomentKeys.contains(normalized)) {
-      return normalized;
-    }
-
-    return _mapLooseCategoryFromText(lower);
-  }
-
-  String _categoryFromKeywordScore(String raw) {
-    final text = raw.toLowerCase();
-    String bestCategory = 'moments';
-    int bestScore = 0;
-    bool hasTie = false;
-
-    for (final entry in _categoryKeywords.entries) {
-      final score = _scoreTextAgainstTerms(text, entry.value);
-      if (score > bestScore) {
-        bestScore = score;
-        bestCategory = entry.key;
-        hasTie = false;
-      } else if (score > 0 && score == bestScore) {
-        hasTie = true;
-      }
-    }
-
-    if (bestScore == 0 || hasTie) return 'moments';
-    return bestCategory;
-  }
-
-  String _classifyMomentFromTextOnly(DiaryEntryModel diary) {
-    final combined = [
-      diary.title,
-      diary.context,
-      diary.keywords.join(' '),
-    ].join(' ').trim();
-    if (combined.isEmpty) return 'moments';
-    final scoredCategory = _categoryFromKeywordScore(combined);
-    if (scoredCategory != 'moments') return scoredCategory;
-    return _mapLooseCategoryFromText(combined);
-  }
-
-  Future<String> _classifyMomentFromImageOnly(DiaryEntryModel diary) async {
-    if (diary.imageUrls.isEmpty) return 'moments';
-
-    final imageClassifierModel = AIChatModel(
-      prompt: GeminiService.classificationPrompt,
-      model: 'gemini-2.5-flash',
-    );
-
-    final rawText = await GeminiService(chatModel: imageClassifierModel)
-        .classifyDiaryImage(diary.imageUrls);
-    if (rawText.trim().isEmpty) {
-      print('AI classification empty response for diary ${diary.id}');
-      return 'moments';
-    }
-    print('AI classification for diary ${diary.id}: $rawText');
-    return _extractCategoryFromAiResponse(rawText);
-  }
-
-  Future<String> _classifyMomentWithAi(DiaryEntryModel diary) async {
-    if (diary.imageUrls.isEmpty) return _classifyMomentFromTextOnly(diary);
-
-    // ALWAYS prioritize image classification when images are present
-    // Ignore text content completely to ensure food images go to food_buddy
-    try {
-      final imageCategory = await _classifyMomentFromImageOnly(diary);
-      return imageCategory;
-    } catch (_) {
-      // Only fall back to text if image classification completely fails
-      return _classifyMomentFromTextOnly(diary);
-    }
-  }
-
-  Future<void> _classifyImageMoments(List<DiaryEntryModel> diaries) async {
-    if (_isClassifyingMoments) {
-      _classificationRerunRequested = true;
-      return;
-    }
-    _isClassifyingMoments = true;
-    try {
-      while (true) {
-        final candidates = <DiaryEntryModel>[];
-        for (final diary in diaries) {
-          if (_aiMomentByDiaryId.containsKey(diary.id) ||
-              _classifyingDiaryIds.contains(diary.id)) {
-            continue;
-          }
-
-          if (!diary.imageUrls.any((imageUrl) => imageUrl.trim().isNotEmpty)) {
-            continue;
-          }
-
-          candidates.add(diary);
-          if (candidates.length >= 12) break;
-        }
-
-        if (candidates.isEmpty) break;
-
-        // Process 2 diaries concurrently at a time for speed
-        for (var i = 0; i < candidates.length; i += 2) {
-          if (!mounted) return;
-          
-          final batch = candidates.skip(i).take(2).toList();
-          final futures = <Future<void>>[];
-          
-          for (final diary in batch) {
-            _classifyingDiaryIds.add(diary.id);
-            
-            futures.add(
-              _classifyMomentWithAi(diary).then((category) {
-                _classifyingDiaryIds.remove(diary.id);
-                if (mounted) {
-                  _safeSetState(() {
-                    _aiMomentByDiaryId[diary.id] = category;
-                  });
-                }
-              }).catchError((_) {
-                _classifyingDiaryIds.remove(diary.id);
-                if (mounted) {
-                  _safeSetState(() {
-                    _aiMomentByDiaryId[diary.id] = 'moments';
-                  });
-                }
-              })
-            );
-          }
-          
-          // Wait for current batch to complete before starting next batch
-          await Future.wait(futures);
-        }
-      }
-    } catch (_) {
-      return;
-    } finally {
-      _isClassifyingMoments = false;
-      if (_classificationRerunRequested && mounted) {
-        _classificationRerunRequested = false;
-        unawaited(_classifyImageMoments(_allDiaries));
-      }
-    }
-  }
-
-  String _resolveMomentKey(DiaryEntryModel diary) {
-    final now = DateTime.now();
-    if (diary.created.year < now.year &&
-        diary.created.month == now.month &&
-        diary.created.day == now.day) {
-      return 'today_memory';
-    }
-
-    return _aiMomentByDiaryId[diary.id] ?? 'moments';
-  }
-
-  List<_MomentBucket> _buildMomentBuckets(List<DiaryEntryModel> diaries) {
+  List<_MomentBucket> _buildMomentBuckets() {
     final buckets = <String, List<_MomentStoryFrame>>{};
     final categoryByKey = {
       for (final category in _momentCategories) category.key: category,
     };
 
-    for (final diary in diaries) {
-      if (!diary.imageUrls.any((u) => u.trim().isNotEmpty)) continue;
-      final key = _resolveMomentKey(diary);
-      final categoryLabel = categoryByKey[key]?.label ?? 'Moments';
-      final frames = buckets.putIfAbsent(key, () => []);
-      for (final entry in diary.imageUrls.asMap().entries) {
-        final imageIndex = entry.key;
-        final imageUrl = entry.value;
-        if (imageUrl.trim().isEmpty) continue;
-        frames.add(
-          _MomentStoryFrame(
-            diaryId: diary.id,
-            imageIndexInDiary: imageIndex,
-            imageUrl: imageUrl,
-            title: diary.title,
-            created: diary.created,
-            categoryKey: key,
-            categoryLabel: categoryLabel,
-          ),
-        );
-      }
+    // Build diary ID to diary entry map for quick lookups
+    final diaryById = <String, DiaryEntryModel>{
+      for (final diary in _allDiaries) diary.id: diary,
+    };
+
+    for (final moment in _allMoments) {
+      final diary = diaryById[moment.diaryId];
+      if (diary == null) continue;
+      
+      // Find the image index in the diary's imageUrls list
+      final imageIndex = diary.imageUrls.indexOf(moment.imageUrl);
+      if (imageIndex == -1) continue;
+      
+      // Skip if moments is empty
+      if (moment.moments.trim().isEmpty) continue;
+      
+      // Add this image to its category
+      final momentKey = moment.moments;
+      final categoryLabel = categoryByKey[momentKey]?.label ?? 'Moments';
+      final frames = buckets.putIfAbsent(momentKey, () => []);
+      
+      frames.add(
+        _MomentStoryFrame(
+          diaryId: diary.id,
+          imageIndexInDiary: imageIndex,
+          imageUrl: moment.imageUrl,
+          title: diary.title,
+          created: diary.created,
+          categoryKey: momentKey,
+          categoryLabel: categoryLabel,
+        ),
+      );
     }
 
     final result = <_MomentBucket>[];
@@ -845,6 +590,11 @@ class _DiariesState extends State<Diaries> {
       result.add(_MomentBucket(category: category, frames: frameList));
     }
     return result;
+  }
+
+  bool _isNetworkUrl(String value) {
+    final uri = Uri.tryParse(value.trim());
+    return uri != null && (uri.scheme == 'http' || uri.scheme == 'https');
   }
 
   void previousMonth() {
@@ -891,6 +641,7 @@ class _DiariesState extends State<Diaries> {
 
   @override
   void dispose() {
+    _diarySubscription?.cancel();
     _momentsSubscription?.cancel();
     _searchController.dispose();
     super.dispose();
@@ -1078,7 +829,7 @@ Future<bool?> showDeleteConfirmationDialog(BuildContext context) {
                 ? const Center(child: Text('No moments yet'))
                 : Builder(
                     builder: (context) {
-                      final buckets = _buildMomentBuckets(_allDiaries);
+                      final buckets = _buildMomentBuckets();
                       if (buckets.isEmpty) {
                         return const Center(child: Text('No moments yet'));
                       }

@@ -103,7 +103,7 @@ class _ASummaryPageState extends State<AISummaryPage> {
     // Initialize AIChatModel
     final chatModelKeyWord = AIChatModel(
       prompt: 'You are a keyword extraction assistant for a diary search system.\nTask:\nExtract keywords from the user text to help find related diary entries.\nIMPORTANT:\nDo NOT ignore meaningful words. Preserve important details such as people (friend, mom, boss, girlfriend), places (school, office, beach, japan), events (exam, meeting, trip, argument), emotions (stress, happy, angry, anxious), and activities (study, travel, dinner, workout).\nRules:\n- Return 0 to 10 keywords\n- Use lowercase\n- No duplicates\n- Single words or short phrases\n- Keep specific nouns if present\n- Include synonyms only if helpful\n- Do NOT remove words just because they seem common if they carry meaning\return empty list if nothing\nFormat:Example format: ["keyword1", "keyword2", "keyword3", "keyword4", "keyword5"]',
-      model: 'gemma-3-27b-it'
+      model: 'gemini-2.5-flash-lite'
     );
     final chatModelSummary = AIChatModel(
       prompt: 'Reply the user text using the list of diary entries with date provided, staying directly relevant to them with no extra assumptions or unrelated information. If the diary entries have no relevant information, respond with normal conversation.\nReturn a concise response.',
