@@ -920,6 +920,18 @@ class _NewDiaryState extends State<NewDiary> {
           }
         },
       ),
+      actions: [
+        IconButton(
+          icon: Icon(Icons.check, color: Colors.black),
+          onPressed: () {
+            if (widget.fromDetails == true) {
+              Navigator.pop(context);
+            } else {
+              Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => BottomMenu()));
+            }
+          },
+        )
+      ],
     );
   }
 
