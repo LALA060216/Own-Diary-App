@@ -188,7 +188,7 @@ class _Bottommenustate extends State<BottomMenu>{
                     index: 3, 
                     icon: Icons.note_alt_outlined,
                     activeIcon: Icons.note_alt,
-                    title: 'AI Summary'
+                    title: 'AI Chat'
                   ),
                   _navbutton(
                     index: 4,
