@@ -43,6 +43,8 @@ class _NewDiaryState extends State<NewDiary> {
   final DateTime date = DateTime.now();
   final TextEditingController _diaryController = TextEditingController();
   final TextEditingController _titleController = TextEditingController();
+  final FocusNode _titleFocusNode = FocusNode();
+  final FocusNode _diaryFocusNode = FocusNode();
 
   bool isLoading = false;
   List<String> imageUrls = [];
@@ -616,6 +618,8 @@ class _NewDiaryState extends State<NewDiary> {
     }
     
     _diaryController.dispose();
+    _titleFocusNode.dispose();
+    _diaryFocusNode.dispose();
     super.dispose();
   }
   
@@ -631,7 +635,8 @@ class _NewDiaryState extends State<NewDiary> {
           final double containerHeight = constraints.maxHeight * 0.65;
           final double imagePickerHeight = constraints.maxHeight * 0.25;
           final double width = constraints.maxWidth * 0.95;
-              final double keyboardShift = keyboardInset > 0
+            final bool isDiaryFocused = _diaryFocusNode.hasFocus;
+            final double keyboardShift = (keyboardInset > 0 && isDiaryFocused)
                 ? -((keyboardInset / containerHeight) * 0.3).clamp(0.0, 0.5)
                 : 0.0;
 
@@ -781,6 +786,7 @@ class _NewDiaryState extends State<NewDiary> {
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
             child: TextField(
               controller: _titleController,
+              focusNode: _titleFocusNode,
               style: const TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.bold,
@@ -848,6 +854,7 @@ class _NewDiaryState extends State<NewDiary> {
                 Expanded(
                   child: TextField(
                     controller: _diaryController,
+                    focusNode: _diaryFocusNode,
                     maxLines: null,
                     expands: true,
                     decoration: InputDecoration(

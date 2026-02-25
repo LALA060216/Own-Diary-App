@@ -271,41 +271,6 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
-  // Placeholder for AI overview card
-  Widget _aiOverview(BuildContext context) {
-    final screenHeight = MediaQuery.of(context).size.height;
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 32),
-      child: Container(
-        height: screenHeight * 0.35,
-        width: double.infinity,
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(15),
-          color: const Color(0xffffffff),
-          boxShadow: [
-            BoxShadow(
-              color: const Color(0xffddd6e1),
-              blurRadius: 4,
-              offset: Offset(0, 1),
-            ),
-          ],
-        ),
-        child: const Column(
-          children: [
-            Text(
-              "AI Overview:",
-              style: TextStyle(
-                fontSize: 16,
-                color: Colors.black87,
-              ),
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -351,8 +316,6 @@ class _ProfilePageState extends State<ProfilePage> {
             ),
             const SizedBox(height: 30),
             _streakAndPost(context),
-            const SizedBox(height: 30),
-            _aiOverview(context),
             const SizedBox(height: 30),
           ],
         ),
