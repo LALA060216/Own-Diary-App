@@ -61,6 +61,7 @@ class _Bottommenustate extends State<BottomMenu>{
 
     return Expanded(
       child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
         onTap: () {
           FocusScope.of(context).unfocus();
           setState(() {
@@ -73,36 +74,41 @@ class _Bottommenustate extends State<BottomMenu>{
             _checkIfCreatedNewDiaryToday();
           }
         },
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 300),
-          curve: Curves.easeInOut,
-          transform: Matrix4.translationValues(0, isActive ? -8 : 0, 0),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                isActive ? activeIcon : icon,
-                size: 27,
-                color: isActive ? Color(0xff4a4a4a) : Colors.black,
-              ),
-              AnimatedOpacity(
-                duration: const Duration(milliseconds: 300),
-                opacity: isActive ? 1.0 : 0.0,
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 300),
-                  height: isActive ? 16 : 0,
-                  child: Text(
-                    title,
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.grey,
+        child: SizedBox.expand(
+          child: Align(
+            alignment: Alignment.center,
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 300),
+              curve: Curves.easeInOut,
+              transform: Matrix4.translationValues(0, isActive ? -8 : 0, 0),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    isActive ? activeIcon : icon,
+                    size: 27,
+                    color: isActive ? Color(0xff4a4a4a) : Colors.black,
+                  ),
+                  AnimatedOpacity(
+                    duration: const Duration(milliseconds: 300),
+                    opacity: isActive ? 1.0 : 0.0,
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 300),
+                      height: isActive ? 16 : 0,
+                      child: Text(
+                        title,
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.grey,
+                        ),
+                      ),
                     ),
                   ),
-                ),
+                ],
               ),
-            ],
+            ),
           ),
         ),
       ),
@@ -192,10 +198,9 @@ class _Bottommenustate extends State<BottomMenu>{
                   ),
                 ],
             ),
-    ),
-    ),
+        ),
+      ),
     );
-    
   }
 }
 

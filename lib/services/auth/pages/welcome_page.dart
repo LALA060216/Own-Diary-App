@@ -119,7 +119,7 @@ class _WelcomePageState extends State<WelcomePage> {
 
   void popPage(){
     setState(() {
-      Navigator.push(context, MaterialPageRoute(builder: (context) => BottomMenu()));
+      Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => BottomMenu()));
     });
   }
 
