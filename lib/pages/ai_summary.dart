@@ -61,6 +61,7 @@ class _ASummaryPageState extends State<AISummaryPage> {
         allContexts.add('date: ${DateFormat('yyyy-MM-dd').format(date)} title: $title Diary: $context');
       }
     }
+    allContexts.add('Date Today: ${DateFormat('yyyy-MM-dd').format(DateTime.now())}');
     print(allContexts);
     return allContexts;
   }
@@ -118,7 +119,7 @@ class _ASummaryPageState extends State<AISummaryPage> {
       model: 'gemini-2.5-flash'
     );
     final chatModelSummary = AIChatModel(
-      prompt: 'Reply the user text using the list of diary entries with date provided, staying directly relevant to them with no extra assumptions or unrelated information. If the diary entries have no relevant information, respond with normal conversation.\nReturn a concise response.',
+      prompt: 'Reply the user text using the list of diary entries with date provided\nIf user text ask about date and the date is close, use today or yesterday to represent it when answer.\nstaying directly relevant to them with no extra assumptions or unrelated information. If the diary entries have no relevant information, respond with normal conversation.\nReturn a concise response.',
       model: 'gemini-2.5-flash'
     );
     
