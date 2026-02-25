@@ -10,11 +10,6 @@
 ### Summary of our project
 
 Our AI-based diary mitigate this by combining diary with intelligent assistance. Users are allowed to easily record daily experiences by attaching images or generating paragraphs with the help of our AI assistant. The solution is also designed to be inclusive for children and the elderly. AI assistant removes the need for writing skills, making diary writing simple and accessible for all age groups.
-
-### Problem statement
-
-Many people nowadays, especially students and busy young adults, struggle to consistently record their thoughts, emotions and daily experience because a traditional diary requires time, discipline and writing effort. As a result, personal memories, emotional health and important life reflection are often lost or forgotten.
-
 ---
 
 ## Demo Video Link
@@ -25,17 +20,24 @@ Many people nowadays, especially students and busy young adults, struggle to con
 
 ## Project Documentation
 
-### Technical Implementation Overview of technologies used
-- Firebase Analysitcs
-- Cloud FireStore
-- Firebase Authentication
-- Firebase Storage
-- Flutter
-- Google Gemini via Google AI Studio
+### Technical architecture
+- Our AI-based diary is built from four main components, **Mobile App**, **Authentication (Firebase Auth)**, **Data Layer (Cloud Firestore & Firebase Storage)** and **AI Layer (Google Gemini via API & optional Cloud Functions/Cloud Run)**. 
 
-### Implementation, innovation and challenges faced
+- **Mobile App (Flutter)**
+This is the user interface where users log in, chat with AI and create diary entries using text, images or short inputs. 
 
-#### Implementation
+- **Authentication (Firebase Auth)**
+Handles secure user sign-in and identity. This ensures every diary and analysis belongs to the correct user and enables access control.
+
+- **Data Layer (Cloud Firestore & Firebase Storage)**
+Firestore stores structured data like diary entries, chat history, mood tags and user preferences.
+Storage stores uploaded images linked to diary entries. We structured it this way because Firestore is great for fast, scalable app data while Storage is designed for media files.
+
+- **AI Layer (Google Gemini via API & optional Cloud Functions/Cloud Run)**
+User inputs (text/images/context) are sent to Gemini for tasks like diary entry generation, mood analysis, health tracking, trend summaries and personalized insights. A backend layer can sit between the app and Gemini to keep API keys secure, enforce permissions and log analytics safely.
+
+
+### Implementation
 
 - **Flutter:** We chose Flutter as our main mobile application development platform because it allows us to build a single codebase for both Android and iOS. Flutter reduces development time while maintaining high performance and a smooth user interface.
 
@@ -49,23 +51,13 @@ Many people nowadays, especially students and busy young adults, struggle to con
 
 - **Google Gemini (via Google AI Studio API):** Gemini powers our AI assistant. We chose it because it provides strong natural language understanding and reasoning capabilities, enabling mood analysis, pattern detection and personalised life insights.
 
-#### Innovation
-
-- We implemented AI into our diary app which transforms it from a simple digital diary into an intelligent personal life companion. Without AI, the app would only function as a storage platform where users manually write and review entries. It would not be able to understand, analyze or provide insights based on user data. With AI assistant, the system can:
-  
-
-- **Analyze Emotional Patterns**  
-The AI detects emotional changes in diary entries and identifies mood trends over time even if users’ current mood is not directly mentioned in the diary. For example, if a user shows increasing stress-related language across several days, the AI assistant can highlight this phenomenon and suggest reflection or strategies.
-
-- **Provide Personalized Insights**  
-Instead of just storing image and text, the AI summarizes weekly reflections, identifies recurring themes such as financial worries, productivity struggles and provides personalised suggestions for improvement.
-
-- **Lower Writing Barriers**  
-Users can input short phrases or upload images then the AI assistant expands them into structured diary entries. This makes journaling accessible to children elderly users or individuals who lack strong writing skills and also time for writing self reflection.
-
-- **Life Assistance Beyond Journaling**  
-AI assistant can interpret diary data to give guidance on emotional stability, habit formation, productivity and basic wealth management awareness.
-
-#### Challenges
+### Challenges
 
 - One significant technical challenge we faced was debugging the new_diary.dart file. This file was complex because it connected multiple systems and files at once for example, Firebase Authentication, Cloud Firestire, Firebase Storage and all other files related to the diary. Since it handled diary creation, update, image uploads, deletion  and streak tracking, even a small mistake could break multiple functions and cause system down.
+
+- The main issue involved streak calculation, creation and deletion of diary and empty diary handling. As we allow users to create multiple diaries per day, the streak logic had to ensure that streaks were updated correctly without being incremented multiple times on the same day. At the same time, if a user created an empty diary, it had to be automatically deleted to prevent false diary counts, incorrect streak updates and empty diary to be shown in the total diary page. 
+  
+- During debugging, we inspected Firestore documents to check whether streaks were being updated multiple times per day. We added conditional checks to ensure streak updates only occurred when a valid diary was created by introducing and debugging a lastStreakUpdateDate field in Firestore. We compared it with the current date to ensure streaks only increment once per day. We resolved the problem createdDate and lastUpdatedDate by enforcing consistent timestamp creation so that validation checks were added to ensure both fields always exist before rendering.
+
+### Future roadmap
+- In the next phase of development, we plan to expand the system by introducing a deeper phone-level integration option. Instead of relying only on manual diary entries, the assistant will be able to integrate more naturally into the user’s smartphone environment (with user permission). This would allow the AI to understand daily patterns more seamlessly and provide smarter, tailored and context-aware insights. At the same time, we aim to solve the major concern for AI–based systems related to privacy and data safety. Therefore, our future direction includes solving the privacy and data safety challenge by shifting toward on-device AI processing. By integrating the AI directly into smartphones and keeping sensitive data stored locally rather than uploading it to cloud servers, we aim to significantly reduce the risk of data exposure and build stronger user trust. 
