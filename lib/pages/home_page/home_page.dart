@@ -51,7 +51,7 @@ class _HomepageState extends State<Homepage> with RouteAware{
   @override
   void initState() {
     super.initState();
-    _checkIfCreatedNewDiaryToday();
+    _checkIfCreatedNewDiaryToday(hasload: hasLoadedInitial);
     _getStreak();
     if (!hasLoadedInitial){
       if (now.weekday == DateTime.monday) {
@@ -61,18 +61,6 @@ class _HomepageState extends State<Homepage> with RouteAware{
       }
       hasLoadedInitial = true;
     }
-    _didUpdatedDiary().then((updated) {
-      if (updated) {
-        _updateDailyMoodAndAttention(requestAi: true);
-      } else {
-        if (mounted) {
-          setState(() {
-            isLoading = false;
-            isloadingAttention = false;
-          });
-        }
-      }
-    });
   }
 
   @override
@@ -87,7 +75,7 @@ class _HomepageState extends State<Homepage> with RouteAware{
     super.dispose();
   }
 
-  Future<void> _checkIfCreatedNewDiaryToday() async {
+  Future<void> _checkIfCreatedNewDiaryToday({bool hasload = false}) async {
     final newestDiary = await firestoreService.getNewestDiaryDetail(userId);
     DateTime? newestDate = newestDiary?.created;
     previousDiaryController.text = newestDiary?.context ?? '';
@@ -99,6 +87,22 @@ class _HomepageState extends State<Homepage> with RouteAware{
     setState(() {
       createdNewDiaryToday = newestDate != null && DateUtils.isSameDay(newestDate, DateTime.now());
     });
+    if (createdNewDiaryToday && hasload) {
+      _didUpdatedDiary().then((updated) {
+      if (updated) {
+          _updateDailyMoodAndAttention(requestAi: true);
+        } else {
+          if (mounted) {
+            setState(() {
+              isLoading = false;
+              isloadingAttention = false;
+            });
+          }
+        }
+      });
+    } else if (createdNewDiaryToday && !hasload) {
+      _updateDailyMoodAndAttention(requestAi: false);
+    }
   }
 
   Future<String> _getDiaryContext(String contextType) async {
