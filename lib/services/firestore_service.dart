@@ -22,8 +22,30 @@ class FirestoreService {
   CollectionReference<Map<String, dynamic>> get momentsCollection =>
       firestore.collection('moments');
 
-  // ==================== MOMENTS OPERATIONS ====================
+ 
+  /// Get all unique keywords for a user
+  Future<List<String>> getAllUserKeywords() async {
+    final uid = FirebaseAuth.instance.currentUser!.uid;
 
+    final snapshot = await FirebaseFirestore.instance
+        .collection('diaryEntries')
+        .where('userId', isEqualTo: uid)
+        .get();
+
+    // Use Set to avoid duplicates
+    Set<String> keywordSet = {};
+
+    for (var doc in snapshot.docs) {
+      List<dynamic>? keywords = doc.data()['keywords'];
+      if (keywords != null) {
+        keywordSet.addAll(keywords.cast<String>());
+      }
+    }
+
+    return keywordSet.toList();
+  }
+
+  // ==================== MOMENTS OPERATIONS ====================
   /// Check if an image URL already has moments
   Future<MomentsModel?> getMomentByImageUrl(String userId, String imageUrl) async {
     try {
@@ -445,6 +467,22 @@ class FirestoreService {
       rethrow;
     }
   }
+
+  Future<String> getAllDiaryTitle() async {
+    final uid = FirebaseAuth.instance.currentUser!.uid;
+    final snapshot = await FirebaseFirestore.instance
+        .collection('diaryEntries')
+        .where('userId', isEqualTo: uid)
+        .get();
+    Set<String> titles = {};
+    for (var doc in snapshot.docs) {
+      List<dynamic>? title = doc['title'] ?? '';
+      if (title != null && title.isNotEmpty) {
+        titles.addAll(title.cast<String>());
+      }
+    }
+    return titles.toList().join(', ');
+  } 
 
 
   /// Update diary entry keywords

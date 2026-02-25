@@ -599,6 +599,7 @@ class _NewDiaryState extends State<NewDiary> {
           // Parse the JSON array response
           List<dynamic> keywordList = jsonDecode(keywords);
           List<String> parsedKeywords = keywordList.map((k) => k.toString().trim()).toList();
+          parsedKeywords.add(titleAtDispose);
           
           await _firestoreService.updateDiaryEntryKeywords(
             entryId: entryIdAtDispose,
@@ -608,7 +609,7 @@ class _NewDiaryState extends State<NewDiary> {
           // Fallback to comma-separated parsing if JSON fails
           await _firestoreService.updateDiaryEntryKeywords(
             entryId: entryIdAtDispose,
-            newKeywords: keywords.split(',').map((k) => k.trim()).toList()
+            newKeywords: keywords.split(',').map((k) => k.trim()).toList()..add(titleAtDispose)
           );
         }
       });
@@ -620,6 +621,7 @@ class _NewDiaryState extends State<NewDiary> {
   
   @override
   Widget build(BuildContext context) {
+    final double keyboardInset = MediaQuery.of(context).viewInsets.bottom;
     return Scaffold(
       backgroundColor: Color(0xfff5f5f5),
       resizeToAvoidBottomInset: false,
@@ -629,6 +631,9 @@ class _NewDiaryState extends State<NewDiary> {
           final double containerHeight = constraints.maxHeight * 0.65;
           final double imagePickerHeight = constraints.maxHeight * 0.25;
           final double width = constraints.maxWidth * 0.95;
+              final double keyboardShift = keyboardInset > 0
+                ? -((keyboardInset / containerHeight) * 0.3).clamp(0.0, 0.5)
+                : 0.0;
 
           return Align(
             alignment: Alignment.topCenter,
@@ -637,7 +642,12 @@ class _NewDiaryState extends State<NewDiary> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  textfield(containerHeight, width),
+                  AnimatedSlide(
+                    offset: Offset(0, keyboardShift),
+                    duration: const Duration(milliseconds: 200),
+                    curve: Curves.easeOut,
+                    child: textfield(containerHeight, width),
+                  ),
                   Container(height: 20),
                   imagePicker(width, imagePickerHeight)
                 ],
@@ -883,6 +893,8 @@ class _NewDiaryState extends State<NewDiary> {
     return AppBar(
       automaticallyImplyLeading: false,
       backgroundColor: const Color(0xffffffff),
+      elevation: 0,
+      scrolledUnderElevation: 0,
       centerTitle: true,
       title: Text(
         'New Diary', 

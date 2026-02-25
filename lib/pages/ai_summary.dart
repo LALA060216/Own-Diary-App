@@ -7,6 +7,7 @@ import '../services/gemini_service.dart';
 import '../services/models/ai_chat_model.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/intl.dart';
+import 'package:diaryapp/services/firestore_service.dart';
 
 final List<_ChatMessage> _messages = [];
 final List<String> _diaryContexts = [];
@@ -28,6 +29,7 @@ class _ASummaryPageState extends State<AISummaryPage> {
 
   late final GeminiService _geminiServiceKeyWord;
   late final GeminiService _geminiServiceSummary;
+  final FirestoreService _firestoreService = FirestoreService();
 
 
   Future<List<String>> _fetchDiaryEntriesWithKeyword(List<String> keywords) async {
@@ -53,9 +55,10 @@ class _ASummaryPageState extends State<AISummaryPage> {
     for (var doc in querySnapshot.docs) {
       String context = doc['context'] ?? '';
       Timestamp? timestamp = doc['created'];
+      String title = doc['title'];
       if (timestamp != null) {
         DateTime date = timestamp.toDate();
-        allContexts.add('date: ${DateFormat('yyyy-MM-dd').format(date)} Diary: $context');
+        allContexts.add('date: ${DateFormat('yyyy-MM-dd').format(date)} title: $title Diary: $context');
       }
     }
     print(allContexts);
@@ -77,8 +80,16 @@ class _ASummaryPageState extends State<AISummaryPage> {
   }
 
   List<String> _parseKeywords(String keywordResponse) {
+    final cleaned = keywordResponse
+        .replaceAll('\r\n', '\n')
+        .replaceAll('/n', '\n')
+        .trim();
+
     try {
-      final decoded = jsonDecode(keywordResponse);
+      // Prefer the first JSON array if the response contains extra text.
+      final arrayMatch = RegExp(r'\[[\s\S]*?\]').firstMatch(cleaned);
+      final jsonText = arrayMatch?.group(0) ?? cleaned;
+      final decoded = jsonDecode(jsonText);
       if (decoded is List) {
         return _normalizeKeywords(
           decoded.map((k) => k.toString().trim()).toList(),
@@ -87,13 +98,14 @@ class _ASummaryPageState extends State<AISummaryPage> {
     } catch (_) {
       // Fallback to comma-separated parsing if JSON fails.
       return _normalizeKeywords(
-        keywordResponse
+        cleaned
             .split(',')
             .map((k) => k.trim())
             .where((k) => k.isNotEmpty)
             .toList(),
       );
     }
+
     return [];
   }
   
@@ -102,8 +114,8 @@ class _ASummaryPageState extends State<AISummaryPage> {
     super.initState();
     // Initialize AIChatModel
     final chatModelKeyWord = AIChatModel(
-      prompt: 'You are a keyword extraction assistant for a diary search system.\nTask:\nExtract keywords from the user text to help find related diary entries.\nIMPORTANT:\nDo NOT ignore meaningful words. Preserve important details such as people (friend, mom, boss, girlfriend), places (school, office, beach, japan), events (exam, meeting, trip, argument), emotions (stress, happy, angry, anxious), and activities (study, travel, dinner, workout).\nRules:\n- Return 0 to 10 keywords\n- Use lowercase\n- No duplicates\n- Single words or short phrases\n- Keep specific nouns if present\n- Include synonyms only if helpful\n- Do NOT remove words just because they seem common if they carry meaning\return empty list if nothing\nFormat:Example format: ["keyword1", "keyword2", "keyword3", "keyword4", "keyword5"]',
-      model: 'gemini-2.5-flash-lite'
+      prompt: 'You are a keyword matching assistant./nSelect 0 to 10 keywords that are most related to the user input text./nOnly choose keywords from the provided keyword list\nPrioritize semantic similarity, not exact matches./nIgnore unrelated keywords./nIf nothing is relevant, return []./nReturn ONLY a JSON array of strings with no extra text.',
+      model: 'gemini-2.5-flash'
     );
     final chatModelSummary = AIChatModel(
       prompt: 'Reply the user text using the list of diary entries with date provided, staying directly relevant to them with no extra assumptions or unrelated information. If the diary entries have no relevant information, respond with normal conversation.\nReturn a concise response.',
@@ -129,8 +141,10 @@ class _ASummaryPageState extends State<AISummaryPage> {
     // Add user message to chat history
     _chatHistory.add(Content.text(text));
 
+
     try{
-      final keywordResponse = await _geminiServiceKeyWord.sendMessage('user text: $text');
+      final allKeywords = await _firestoreService.getAllUserKeywords();
+      final keywordResponse = await _geminiServiceKeyWord.sendMessage('user text: $text\nall keywords from user diary entries: ${allKeywords.join(', ')}');
       print('keywordResponse: $keywordResponse');
       final keywords = _parseKeywords(keywordResponse);
       final contexts = await _fetchDiaryEntriesWithKeyword(keywords);
@@ -173,6 +187,8 @@ class _ASummaryPageState extends State<AISummaryPage> {
       appBar: AppBar(
         automaticallyImplyLeading: false,
         backgroundColor: Color(0xffffffff),
+        elevation: 0,
+        scrolledUnderElevation: 0,
         title: Text(
           'Chat with your Personal AI', 
           style: TextStyle(
