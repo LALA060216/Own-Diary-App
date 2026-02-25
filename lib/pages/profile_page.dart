@@ -121,12 +121,12 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   // Avatar and username/email display
-  Widget _profilePicAndUsernameDisplay() {
+  Widget _profilePicAndUsernameDisplay(BuildContext context) {
+    final screenHeight = MediaQuery.of(context).size.height;
     return Container(
-      height: 150,
-      padding: const EdgeInsets.only(left: 10),
+      height: screenHeight * 0.15,
+      padding: const EdgeInsets.symmetric(horizontal: 32),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
           GestureDetector(
             onTap: _showChangePhotoSheet,
@@ -154,9 +154,8 @@ class _ProfilePageState extends State<ProfilePage> {
               ),
             ),
           ),
-          SizedBox(
-            width: 250,
-            height: 80,
+          const SizedBox(width: 16),
+          Expanded(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -185,113 +184,124 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   // Display streak and post stats
-  Widget _streakAndPost() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-      children: [
-        Card(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(15),
-          ),
-          elevation: 0.5,
-          child: Container(
-            width: 130,
-            height: 50,
-            decoration: BoxDecoration(
-              color: const Color(0xffF9F6EE),
-              borderRadius: BorderRadius.circular(15),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                const Icon(Icons.star_rate, color: Colors.black),
-                const Text(
-                  "Streak:",
-                  style: TextStyle(
-                    color: Colors.black,
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                  ),
+  Widget _streakAndPost(BuildContext context) {
+    final screenHeight = MediaQuery.of(context).size.height;
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 32),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+        children: [
+          Expanded(
+            child: Card(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(15),
+              ),
+              elevation: 0.5,
+              child: Container(
+                height: screenHeight * 0.06,
+                decoration: BoxDecoration(
+                  color: const Color(0xffffffff),
+                  borderRadius: BorderRadius.circular(15),
                 ),
-                Text(
-                  currentUserModel?.streak.toString() ?? "-",
-                  style: const TextStyle(
-                    color: Colors.black,
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                  ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    const Icon(Icons.star_rate, color: Colors.black),
+                    const Text(
+                      "Streak:",
+                      style: TextStyle(
+                        color: Colors.black,
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    Text(
+                      currentUserModel?.streak.toString() ?? "-",
+                      style: const TextStyle(
+                        color: Colors.black,
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
                 ),
-              ],
-            ),
-          ),
-        ),
-        Card(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(15),
-          ),
-          elevation: 0.5,
-          child: Container(
-            width: 130,
-            height: 50,
-            decoration: BoxDecoration(
-              color: const Color(0xffF9F6EE),
-              borderRadius: BorderRadius.circular(15),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                const Icon(Icons.bar_chart, color: Colors.black),
-                const Text(
-                  "Post:",
-                  style: TextStyle(
-                    color: Colors.black,
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                Text(
-                  currentUserModel?.totalDiaryPosted.toString() ?? "-",
-                  style: const TextStyle(
-                    color: Colors.black,
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ],
+              ),
             ),
           ),
-        ),
-      ],
+          const SizedBox(width: 16),
+          Expanded(
+            child: Card(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(15),
+              ),
+              elevation: 0.5,
+              child: Container(
+                height: screenHeight * 0.06,
+                decoration: BoxDecoration(
+                  color: const Color(0xffffffff),
+                  borderRadius: BorderRadius.circular(15),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    const Icon(Icons.bar_chart, color: Colors.black),
+                    const Text(
+                      "Post:",
+                      style: TextStyle(
+                        color: Colors.black,
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    Text(
+                      currentUserModel?.totalDiaryPosted.toString() ?? "-",
+                      style: const TextStyle(
+                        color: Colors.black,
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
   // Placeholder for AI overview card
-  Widget _aiOverview() {
-    return Container(
-      height: 350,
-      width: 308,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(15),
-        color: const Color(0xffF9F6EE),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xffddd6e1),
-            blurRadius: 4,
-            offset: Offset(0, 1),
-          ),
-        ],
-      ),
-      child: const Column(
-        children: [
-          Text(
-            "AI Overview:",
-            style: TextStyle(
-              fontSize: 16,
-              color: Colors.black87,
+  Widget _aiOverview(BuildContext context) {
+    final screenHeight = MediaQuery.of(context).size.height;
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 32),
+      child: Container(
+        height: screenHeight * 0.35,
+        width: double.infinity,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(15),
+          color: const Color(0xffffffff),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xffddd6e1),
+              blurRadius: 4,
+              offset: Offset(0, 1),
             ),
-            textAlign: TextAlign.center,
-          ),
-        ],
+          ],
+        ),
+        child: const Column(
+          children: [
+            Text(
+              "AI Overview:",
+              style: TextStyle(
+                fontSize: 16,
+                color: Colors.black87,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -300,9 +310,7 @@ class _ProfilePageState extends State<ProfilePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: const Color(0xfffffaf0),
-        shadowColor: const Color(0xffEDEADE),
-        elevation: 2,
+        backgroundColor: const Color(0xffffffff),
         title: const Text(
           'Profile',
           style: TextStyle(
@@ -332,19 +340,22 @@ class _ProfilePageState extends State<ProfilePage> {
         automaticallyImplyLeading: false,
       ),
       backgroundColor: const Color(0xfff5f5f5),
-      body: Column(
-        children: [
-          _profilePicAndUsernameDisplay(),
-          const Divider(
-            height: 1,
-            thickness: 2,
-            color: Color(0xffe0e0e0),
-          ),
-          const SizedBox(height: 30),
-          _streakAndPost(),
-          const SizedBox(height: 30),
-          _aiOverview(),
-        ],
+      body: SingleChildScrollView(
+        child: Column(
+          children: [
+            _profilePicAndUsernameDisplay(context),
+            const Divider(
+              height: 1,
+              thickness: 2,
+              color: Color(0xffe0e0e0),
+            ),
+            const SizedBox(height: 30),
+            _streakAndPost(context),
+            const SizedBox(height: 30),
+            _aiOverview(context),
+            const SizedBox(height: 30),
+          ],
+        ),
       ),
     );
   }

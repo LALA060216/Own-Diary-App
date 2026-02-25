@@ -1095,9 +1095,6 @@ Future<bool?> showDeleteConfirmationDialog(BuildContext context) {
                               ),
                             );
                           },
-                          onLongPress: () async {
-                            // handle long‑press actions if needed
-                          },
                           child: Padding(
                             padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
                             child: Column(
@@ -1116,6 +1113,7 @@ Future<bool?> showDeleteConfirmationDialog(BuildContext context) {
                                         final bool? confirm = await showDeleteConfirmationDialog(context);
                                         if (confirm == true) {
                                           await firestoreService.deleteDiaryEntry(diary.id, userId!);
+                                          await firestoreService.deleteMomentsForDiary(diary.id);
                                         }
                                       },
                                     ),

@@ -21,7 +21,8 @@ class NewDiary extends StatefulWidget{
   final List<String>? previousImageUrls;
   final String? diaryId;
   final String? previousTitle;
-  const NewDiary({super.key, this.imageFile, this.previousDiaryController, this.previousImageUrls, this.diaryId, this.previousTitle});
+  final bool? fromDetails;
+  const NewDiary({super.key, this.imageFile, this.previousDiaryController, this.previousImageUrls, this.diaryId, this.previousTitle, this.fromDetails});
 
   @override
   State<NewDiary> createState() => _NewDiaryState();
@@ -449,6 +450,14 @@ class _NewDiaryState extends State<NewDiary> {
     }
     final targetUrl = isPreviousImage ? previousImageUrls[index] : imageUrls[localIndex];
     await _firebaseStorageService.deleteImage(targetUrl);
+    
+    // Delete the moment entry for this image
+    try {
+      await _firestoreService.deleteMomentByImageUrl(_userId, targetUrl);
+    } catch (e) {
+      // Ignore failures to delete moment
+    }
+    
     if (mounted) {
       setState(() {
         if (isPreviousImage) {
@@ -885,7 +894,11 @@ class _NewDiaryState extends State<NewDiary> {
       leading: IconButton(
         icon: Icon(Icons.arrow_back, color: Colors.black),
         onPressed: () {
-          Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => BottomMenu()));
+          if (widget.fromDetails == true) {
+            Navigator.pop(context);
+          } else {
+            Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => BottomMenu()));
+          }
         },
       ),
     );

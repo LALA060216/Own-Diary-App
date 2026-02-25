@@ -102,6 +102,22 @@ class FirestoreService {
     }
   }
 
+  /// Delete moment entry by image URL
+  Future<void> deleteMomentByImageUrl(String userId, String imageUrl) async {
+    try {
+      final snapshot = await momentsCollection
+          .where('userId', isEqualTo: userId)
+          .where('imageUrl', isEqualTo: imageUrl)
+          .get();
+      
+      for (final doc in snapshot.docs) {
+        await doc.reference.delete();
+      }
+    } catch (e) {
+      rethrow;
+    }
+  }
+
   /// Get all moments for a user
   Stream<List<MomentsModel>> getUserMomentsStream(String userId) {
     return momentsCollection
