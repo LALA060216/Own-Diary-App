@@ -3,6 +3,7 @@ import 'package:diaryapp/main.dart';
 import 'package:diaryapp/services/firestore_service.dart';
 import 'package:diaryapp/services/gemini_service.dart';
 import 'package:diaryapp/services/models/ai_chat_model.dart';
+import 'package:diaryapp/services/models/diary_entry_model.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -51,7 +52,8 @@ class _HomepageState extends State<Homepage> with RouteAware{
   @override
   void initState() {
     super.initState();
-    _checkIfCreatedNewDiaryToday(hasload: hasLoadedInitial);
+    print('Initializing HomePage, hasLoadedInitial=$hasLoadedInitial');
+    _checkNewestDiary(requiredReload: hasLoadedInitial);
     _getStreak();
     if (!hasLoadedInitial){
       if (now.weekday == DateTime.monday) {
@@ -75,9 +77,9 @@ class _HomepageState extends State<Homepage> with RouteAware{
     super.dispose();
   }
 
-  Future<void> _checkIfCreatedNewDiaryToday({bool hasload = false}) async {
+  Future<void> _checkNewestDiary({bool requiredReload = false}) async {
     final newestDiary = await firestoreService.getNewestDiaryDetail(userId);
-    DateTime? newestDate = newestDiary?.created;
+    DateTime? newestDate = newestDiary?.created;  
     previousDiaryController.text = newestDiary?.context ?? '';
     imageUrls = newestDiary?.imageUrls ?? [];
     diaryId = newestDiary?.id;
@@ -87,9 +89,10 @@ class _HomepageState extends State<Homepage> with RouteAware{
     setState(() {
       createdNewDiaryToday = newestDate != null && DateUtils.isSameDay(newestDate, DateTime.now());
     });
-    if (createdNewDiaryToday && hasload) {
-      _didUpdatedDiary().then((updated) {
+    if (createdNewDiaryToday && requiredReload) {
+      _didUpdatedDiary(newestDiary).then((updated) {
       if (updated) {
+          print('hih');
           _updateDailyMoodAndAttention(requestAi: true);
         } else {
           if (mounted) {
@@ -100,7 +103,7 @@ class _HomepageState extends State<Homepage> with RouteAware{
           }
         }
       });
-    } else if (createdNewDiaryToday && !hasload) {
+    } else if ((createdNewDiaryToday && !requiredReload) || (!createdNewDiaryToday)) {
       _updateDailyMoodAndAttention(requestAi: false);
     }
   }
@@ -123,8 +126,7 @@ class _HomepageState extends State<Homepage> with RouteAware{
     });
   }
 
-  Future<bool> _didUpdatedDiary() async {
-    final newestDiary = await firestoreService.getNewestDiaryDetail(userId);
+  Future<bool> _didUpdatedDiary(DiaryEntryModel? newestDiary) async {
     String newestContext = newestDiary?.context ?? '';
     List<String> newestImageUrls = newestDiary?.imageUrls != null ? List<String>.from(newestDiary!.imageUrls) : [];
     if (newestContext != oldDiaryContext || !listEquals(newestImageUrls, imageUrls)) {
@@ -144,6 +146,7 @@ class _HomepageState extends State<Homepage> with RouteAware{
     });
     
     if (requestAi) {
+      print('Requesting AI analysis for mood with context: $context');
       await GeminiService(chatModel: _moodModel).getMoodAnalysis(context).then((value) {
         try {
           final match = RegExp(r'^\s*(\d+)\s+(\d+)\s*$').firstMatch(value);
@@ -199,6 +202,12 @@ class _HomepageState extends State<Homepage> with RouteAware{
               mood[analyseIndexMood] = [healthIndex, emotionIndex];
             });
           }
+        } else {
+          if (!mounted) return;
+          setState(() {
+            isLoading = false;
+            mood[analyseIndexMood] = [0, 0];
+          });
         }
       } catch (e) {
         print('Error loading stored mood: $e');
@@ -220,6 +229,7 @@ class _HomepageState extends State<Homepage> with RouteAware{
     });
     
     if (requestAi) {
+      print('Requesting AI analysis for attention with context: $context');
       await GeminiService(chatModel: _attentionModel).getAttentionAnalysis(context).then((value) {
         print(value);
         try {
@@ -293,6 +303,12 @@ class _HomepageState extends State<Homepage> with RouteAware{
             isloadingAttention = false;
             attentionData[analyseIndexAttention] = parsedData;
           });
+        } else {
+          if (!mounted) return;
+          setState(() {
+            isloadingAttention = false;
+            attentionData[analyseIndexAttention] = {};
+          });
         }
       } catch (e) {
         print('Error loading stored attention: $e');
@@ -309,7 +325,6 @@ class _HomepageState extends State<Homepage> with RouteAware{
     try {
       final context = await _getDiaryContext('weekly');
       if (!mounted) return;
-      // Run mood and attention analysis in parallel instead of sequentially
       await Future.wait([
         _refreshMood(context, index: 1, requestAi: requestAi),
         _refreshAttention(context, index: 1, requestAi: requestAi),
@@ -605,10 +620,9 @@ class _HomepageState extends State<Homepage> with RouteAware{
   }
 
   Widget _buildAttentionChart(){
-    if (attentionData.length <= analyseIndex || attentionData[analyseIndex] == {'Error': 0} || attentionData[analyseIndex].isEmpty) {
+    if (attentionData.length <= analyseIndex || attentionData[analyseIndex] == {'Error': 0}) {
       return SizedBox.shrink();
     }
-    
     // More vibrant and appealing colors
     List<Color> chartColors = [
       const Color(0xFF6366F1), // Indigo
@@ -625,7 +639,7 @@ class _HomepageState extends State<Homepage> with RouteAware{
     List<PieChartSectionData> sections = [];
     List<MapEntry<String, int>> sortedAttentionData = {'No Data': 100}.entries.toList();
     // sort attentionData by value in descending order 
-    if (!createdNewDiaryToday && analyseIndex == 0) {
+    if ((analyseIndex == 0 && attentionData[0].isEmpty) || (analyseIndex == 1 && attentionData[1].isEmpty)) {
       sections = [
         PieChartSectionData(
           value: 100,

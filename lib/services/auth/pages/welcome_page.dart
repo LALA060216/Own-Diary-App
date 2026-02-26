@@ -2,6 +2,7 @@ import 'package:diaryapp/bottom_menu.dart';
 import 'package:diaryapp/services/auth/pages/reset_password_page.dart';
 import 'package:diaryapp/services/auth/auth_service.dart';
 import 'package:flutter/material.dart';
+import 'package:diaryapp/pages/home_page/home_page.dart';
 
 class WelcomePage extends StatefulWidget {
   const WelcomePage({super.key});
@@ -118,8 +119,9 @@ class _WelcomePageState extends State<WelcomePage> {
 
 
   void popPage(){
+    Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => BottomMenu()));
     setState(() {
-      Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => BottomMenu()));
+      hasLoadedInitial = false;
     });
   }
 
