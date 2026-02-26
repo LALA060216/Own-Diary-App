@@ -206,7 +206,7 @@ class _ProfilePageState extends State<ProfilePage> {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                   children: [
-                    const Icon(Icons.star_rate, color: Colors.black),
+                    const Icon(Icons.local_fire_department_outlined, color: Colors.red),
                     const Text(
                       "Streak:",
                       style: TextStyle(
