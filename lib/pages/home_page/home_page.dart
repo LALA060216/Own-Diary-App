@@ -103,8 +103,15 @@ class _HomepageState extends State<Homepage> with RouteAware{
           }
         }
       });
-    } else if ((createdNewDiaryToday && !requiredReload) || (!createdNewDiaryToday)) {
+    } else if ((createdNewDiaryToday && !requiredReload)) {
       _updateDailyMoodAndAttention(requestAi: false);
+    } else if (!createdNewDiaryToday) {
+      if (mounted) {
+        setState(() {
+          isLoading = false;
+          isloadingAttention = false;
+        });
+      }
     }
   }
 
