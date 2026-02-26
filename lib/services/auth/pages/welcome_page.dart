@@ -482,6 +482,12 @@ class _WelcomePageState extends State<WelcomePage> {
         shape: BoxShape.circle,
         color: Colors.grey[400],
       ),
+      child: ClipOval(
+        child: Image(
+          image: AssetImage('assets/images/icon_img_2.png'),
+          fit: BoxFit.contain,
+        ),
+      ),
     );
   }
 
