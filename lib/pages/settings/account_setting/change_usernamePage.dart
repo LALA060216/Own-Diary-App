@@ -9,9 +9,8 @@ class ChangeUsernamePage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: Color(0xfffffaf0),
-        shadowColor: Color(0xffEDEADE),
-        elevation: 1,
+        backgroundColor: Color(0xffffffff),
+        elevation: 0,
         title: Text('Change Username'),
         centerTitle: true,
       ),

@@ -17,6 +17,17 @@ class SettingsModel {
     required this.destinationPage,
   });
 
+  static Widget containerDeveloping() {
+    return Container(
+      color: Color(0xfff5f5f5),
+      child: Center(
+        child: Text(
+          'Currently in development!',
+          style: TextStyle(fontSize: 18, color: Colors.grey),
+          )),
+    );
+  }
+
   static List<SettingsModel> getSettingsOptions() {
     List<SettingsModel> settingsOptions = [];
 
@@ -29,25 +40,25 @@ class SettingsModel {
     settingsOptions.add(SettingsModel(
       name: "Notifications",
       icon: Icons.notifications_outlined,
-      destinationPage: Container(color: Colors.amber,)
+      destinationPage: containerDeveloping(),
     ));
 
     settingsOptions.add(SettingsModel(
       name: "Privacy",
       icon: Icons.lock_outline,
-      destinationPage: Container(color: Colors.amber,)
+      destinationPage: containerDeveloping(),
     ));
 
     settingsOptions.add(SettingsModel(
       name: "Theme",
       icon: Icons.color_lens_outlined,
-      destinationPage: Container(color: Colors.amber,)
+      destinationPage: containerDeveloping()
     ));
 
     settingsOptions.add(SettingsModel(
       name: "About",
       icon: Icons.info_outline,
-      destinationPage: Container(color: Colors.amber,)
+      destinationPage: containerDeveloping()
     ));
 
     settingsOptions.add(SettingsModel(

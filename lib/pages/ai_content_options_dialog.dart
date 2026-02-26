@@ -135,6 +135,10 @@ class _AiContentOptionsDialogState extends State<AiContentOptionsDialog> {
     return Dialog(
       insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
       child: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(15),
+          color: const Color(0xfff5f5f5),
+        ),
         constraints: BoxConstraints(
           maxHeight: MediaQuery.of(context).size.height * 0.85,
         ),
@@ -144,8 +148,8 @@ class _AiContentOptionsDialogState extends State<AiContentOptionsDialog> {
             Container(
               padding: const EdgeInsets.all(16),
               decoration: const BoxDecoration(
-                color: Color(0xffF9F6EE),
-                borderRadius: BorderRadius.vertical(top: Radius.circular(4)),
+                color: Color(0xffffffff),
+                borderRadius: BorderRadius.vertical(top: Radius.circular(15)),
               ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -266,15 +270,15 @@ class _AiContentOptionsDialogState extends State<AiContentOptionsDialog> {
             Container(
               padding: const EdgeInsets.all(16),
               decoration: const BoxDecoration(
-                color: Color(0xffF9F6EE),
-                borderRadius: BorderRadius.vertical(bottom: Radius.circular(4)),
+                color: Color(0xffffffff),
+                borderRadius: BorderRadius.vertical(bottom: Radius.circular(15)),
               ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
                   TextButton(
                     onPressed: () => Navigator.of(context).pop(),
-                    child: const Text('Cancel'),
+                    child: const Text('Cancel', style: TextStyle(color: Colors.black54)),
                   ),
                   const SizedBox(width: 8),
                   ElevatedButton(
@@ -292,8 +296,8 @@ class _AiContentOptionsDialogState extends State<AiContentOptionsDialog> {
                       Navigator.of(context).pop(options);
                     },
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xff8B7355),
-                      foregroundColor: Colors.white,
+                      backgroundColor: const Color(0xffF9F6EE),
+                      foregroundColor: Colors.black,
                     ),
                     child: const Text('Generate'),
                   ),
@@ -315,7 +319,7 @@ class _AiContentOptionsDialogState extends State<AiContentOptionsDialog> {
           style: const TextStyle(
             fontSize: 16,
             fontWeight: FontWeight.w600,
-            color: Color(0xff8B7355),
+            color: Colors.black,
           ),
         ),
         const SizedBox(height: 8),
