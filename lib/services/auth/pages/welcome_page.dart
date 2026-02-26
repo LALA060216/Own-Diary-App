@@ -46,38 +46,48 @@ class _WelcomePageState extends State<WelcomePage> {
   }
 
   void updatePasswordRequirements(String value) {
-    setState(() {
-      hasUppercase = value.contains(RegExp(r'[A-Z]'));
-      hasLowercase = value.contains(RegExp(r'[a-z]'));
-      hasNumber = value.contains(RegExp(r'[0-9]'));
-      hasSpecialChar =
-          value.contains(RegExp(r"[!@#$%^&*()_+\-=\[\]{};:'\,.<>?/\\|`~]"));
-      hasMinLength = value.length >= 8;
-    });
+    if (mounted) {
+      setState(() {
+        hasUppercase = value.contains(RegExp(r'[A-Z]'));
+        hasLowercase = value.contains(RegExp(r'[a-z]'));
+        hasNumber = value.contains(RegExp(r'[0-9]'));
+        hasSpecialChar =
+            value.contains(RegExp(r"[!@#$%^&*()_+\-=\[\]{};:'\,.<>?/\\|`~]"));
+        hasMinLength = value.length >= 8;
+      });
+    }
   }
 
   void register() async {
     // Validate inputs
     if (emailController.text.isEmpty) {
-      setState(() {
-        errorMessage = 'Email cannot be empty';
-      });
+      if (mounted) {
+        setState(() {
+          errorMessage = 'Email cannot be empty';
+        });
+      }
       return;
     }
     if (passwordController.text.isEmpty) {
-      setState(() {
-        errorMessage = 'Password cannot be empty';
-      });
+      if (mounted) {
+        setState(() {
+          errorMessage = 'Password cannot be empty';
+        });
+      }
       return;
     }
     if (nameController.text.isEmpty) {
-      setState(() {
-        errorMessage = 'Name cannot be empty';
-      });
+      if (mounted) {
+        setState(() {
+          errorMessage = 'Name cannot be empty';
+        });
+      }
       return;
     }
 
-    setState(() => isLoading = true); // START loading
+    if (mounted) {
+      setState(() => isLoading = true); // START loading
+    }
 
     try {
       await authService.value.signUp(email: emailController.text, password: passwordController.text);
@@ -85,63 +95,83 @@ class _WelcomePageState extends State<WelcomePage> {
       await authService.value.updateUsername(username: nameController.text);
       popPage();
     } catch (e) {
-      setState(() {
-        errorMessage = 'Registration failed';
-      });
+      if (mounted) {
+        setState(() {
+          errorMessage = 'Registration failed';
+        });
+      }
     }
 
-    setState(() => isLoading = false); // STOP loading
+    if (mounted) {
+      setState(() => isLoading = false); // STOP loading
+    }
 
   }
 
   void signIn() async {
     if (emailController.text.isEmpty || passwordController.text.isEmpty) {
-      setState(() {
-        errorMessage = 'Email and password cannot be empty';
-      });
+      if (mounted) {
+        setState(() {
+          errorMessage = 'Email and password cannot be empty';
+        });
+      }
       return;
     }
 
-    setState(() => isLoading = true); // START loading
+    if (mounted) {
+      setState(() => isLoading = true); // START loading
+    }
     
     try {
       await authService.value.signIn(email: emailController.text, password: passwordController.text);
       popPage();
     } catch (e) {
-      setState(() {
-        errorMessage = 'Email or password is incorrect';
-      });
+      if (mounted) {
+        setState(() {
+          errorMessage = 'Email or password is incorrect';
+        });
+      }
     }
 
-    setState(() => isLoading = false); // STOP loading
+    if (mounted) {
+      setState(() => isLoading = false); // STOP loading
+    }
 
   }
 
 
   void popPage(){
     Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => BottomMenu()));
-    setState(() {
-      hasLoadedInitial = false;
-    });
+    if (mounted) {
+      setState(() {
+        hasLoadedInitial = false;
+      });
+    }
   }
 
   void resetPassword() async {
     if (emailController.text.isEmpty) {
-      setState(() {
-        errorMessage = 'Email cannot be empty';
-      });
+      if (mounted) {
+        setState(() {
+          errorMessage = 'Email cannot be empty';
+        });
+      }
       return;
     }
 
     try {
       await authService.value.resetPassword(email: emailController.text);
-      setState(() {
-        errorMessage = 'Password reset email sent';
-      });
+      if (mounted) {
+        setState(() {
+          errorMessage = 'Password reset email sent';
+        });
+      }
     } catch (e) {
-      setState(() {
-        errorMessage = 'Failed to send password reset email';
-      });
+      if (mounted) {
+        setState(() {
+          errorMessage = 'Failed to send password reset email';
+        });
+      }
     }
   }
 
@@ -361,9 +391,11 @@ class _WelcomePageState extends State<WelcomePage> {
             color: Colors.grey[600]),
         suffixIcon: GestureDetector(
           onTap: () {
-            setState(() {
-              showPassword = !showPassword;
-            });
+            if (mounted) {
+              setState(() {
+                showPassword = !showPassword;
+              });
+            }
           },
           child: Icon(
             showPassword
@@ -407,10 +439,12 @@ class _WelcomePageState extends State<WelcomePage> {
   GestureDetector switchSignUp() {
     return GestureDetector(
       onTap: () {
-        setState(() {
-          isSignIn = false;
-          errorMessage = '';
-        });
+        if (mounted) {
+          setState(() {
+            isSignIn = false;
+            errorMessage = '';
+          });
+        }
       },
       child: Column(
         children: [
@@ -439,10 +473,12 @@ class _WelcomePageState extends State<WelcomePage> {
   GestureDetector switchSignIn() {
     return GestureDetector(
       onTap: () {
-        setState(() {
-          isSignIn = true;
-          errorMessage = '';
-        });
+        if (mounted) {
+          setState(() {
+            isSignIn = true;
+            errorMessage = '';
+          });
+        }
       },
       child: Column(
         children: [

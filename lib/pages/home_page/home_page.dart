@@ -481,7 +481,10 @@ class _HomepageState extends State<Homepage> with RouteAware{
                                   ),
                                 ]
                               ),
-                              SizedBox(height: 20),
+                              SizedBox(height: 5),
+                              analyseIndex == 1 ? Container(
+                                padding: EdgeInsets.all(20),
+                                child: Text("This section will be updated at every Monday", style: TextStyle(fontSize: 12, color: Colors.black45))) : SizedBox(height: 20,),
                               moodBlocks(maxWidth, createdNewDiaryToday),
                               SizedBox(height: 20),
                               if (isloadingAttention)
