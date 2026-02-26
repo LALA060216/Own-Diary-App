@@ -62,7 +62,7 @@ class _HomepageState extends State<Homepage> with RouteAware{
     
     if (!hasLoadedInitial){
       _getStreak().then((streakDate) {
-        if (now.weekday == DateTime.friday && !DateUtils.isSameDay(streakDate, now)) {
+        if (now.weekday == DateTime.monday && !DateUtils.isSameDay(streakDate, now)) {
           _updateWeeklyMoodAndAttention(requestAi: true);
         } else {
           _updateWeeklyMoodAndAttention(requestAi: false);
