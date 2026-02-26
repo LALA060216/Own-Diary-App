@@ -649,7 +649,7 @@ class _HomepageState extends State<Homepage> with RouteAware{
     List<PieChartSectionData> sections = [];
     List<MapEntry<String, int>> sortedAttentionData = {'No Data': 100}.entries.toList();
     // sort attentionData by value in descending order 
-    if ((analyseIndex == 0 && attentionData[0].isEmpty) || (analyseIndex == 1 && attentionData[1].isEmpty)) {
+    if ((!createdNewDiaryToday) || (analyseIndex == 0 && attentionData[0].isEmpty) || (analyseIndex == 1 && attentionData[1].isEmpty)) {
       sections = [
         PieChartSectionData(
           value: 100,
