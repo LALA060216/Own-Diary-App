@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:intl/intl.dart';
 import 'package:diaryapp/bottom_menu.dart';
 import 'package:diaryapp/services/firebase_storage_service.dart';
 import 'package:diaryapp/services/firestore_service.dart';
@@ -602,6 +603,7 @@ class _NewDiaryState extends State<NewDiary> {
           List<dynamic> keywordList = jsonDecode(keywords);
           List<String> parsedKeywords = keywordList.map((k) => k.toString().trim()).toList();
           parsedKeywords.add(titleAtDispose);
+          parsedKeywords.add('Date: ${DateFormat('yyyy-MM-dd').format(DateTime.now())}');
           
           await _firestoreService.updateDiaryEntryKeywords(
             entryId: entryIdAtDispose,
@@ -611,7 +613,7 @@ class _NewDiaryState extends State<NewDiary> {
           // Fallback to comma-separated parsing if JSON fails
           await _firestoreService.updateDiaryEntryKeywords(
             entryId: entryIdAtDispose,
-            newKeywords: keywords.split(',').map((k) => k.trim()).toList()..add(titleAtDispose)
+            newKeywords: keywords.split(',').map((k) => k.trim()).toList()..add(titleAtDispose)..add('Date: ${DateFormat('yyyy-MM-dd').format(DateTime.now())}')
           );
         }
       });

@@ -11,7 +11,13 @@ import 'package:diaryapp/services/firestore_service.dart';
 
 final List<_ChatMessage> _messages = [];
 final List<String> _diaryContexts = [];
-final List<Content> _chatHistory = [];
+List<Content> _chatHistory = [];
+
+void clearAiChatState() {
+  _messages.clear();
+  _diaryContexts.clear();
+  _chatHistory.clear();
+}
 
 class AISummaryPage extends StatefulWidget {
 
@@ -58,7 +64,7 @@ class _ASummaryPageState extends State<AISummaryPage> {
       String title = doc['title'];
       if (timestamp != null) {
         DateTime date = timestamp.toDate();
-        allContexts.add('date: ${DateFormat('yyyy-MM-dd').format(date)} title: $title Diary: $context');
+        allContexts.add('date: ${DateFormat('yyyy-MM-dd').format(date)}\nDiary title: $title \nDiary: $context');
       }
     }
     allContexts.add('Date Today: ${DateFormat('yyyy-MM-dd').format(DateTime.now())}');
@@ -119,7 +125,7 @@ class _ASummaryPageState extends State<AISummaryPage> {
       model: 'gemini-2.5-flash'
     );
     final chatModelSummary = AIChatModel(
-      prompt: 'Reply the user text using the list of diary entries with date provided\nIf user text ask about date and the date is close, use today or yesterday to represent it when answer.\nstaying directly relevant to them with no extra assumptions or unrelated information. If the diary entries have no relevant information, respond with normal conversation.\nReturn a concise response.',
+      prompt: 'Reply the user text using the list of diary entries with date provided\nReply using "you" or refer to the user\'s text only. Example: "You played...", "John finished..."\nIf user text ask about date and the date is close, use today or yesterday to represent it when answer.\nstaying directly relevant to them with no extra assumptions or unrelated information. If the diary entries have no relevant information, respond with normal conversation.\nReturn a concise response.',
       model: 'gemini-2.5-flash'
     );
     
@@ -131,7 +137,7 @@ class _ASummaryPageState extends State<AISummaryPage> {
   Future<void> _sendMessage() async {
     final text = _controller.text;
     if (text.isEmpty || is_sending) return;
-    print(  'User input: $text');
+    print('User input: $text');
 
     setState((){
       _messages.add(_ChatMessage(role: _Role.user, text: text));
@@ -145,13 +151,21 @@ class _ASummaryPageState extends State<AISummaryPage> {
 
     try{
       final allKeywords = await _firestoreService.getAllUserKeywords();
-      final keywordResponse = await _geminiServiceKeyWord.sendMessage('user text: $text\nall keywords from user diary entries: ${allKeywords.join(', ')}');
+      final keywordResponse = await _geminiServiceKeyWord.sendMessage('Date Now: ${DateFormat('yyyy-MM-dd').format(DateTime.now())}\nUser text: $text\nall keywords from user diary entries: ${allKeywords.join(', ')}');
       print('keywordResponse: $keywordResponse');
       final keywords = _parseKeywords(keywordResponse);
       final contexts = await _fetchDiaryEntriesWithKeyword(keywords);
-      _diaryContexts.addAll(contexts);
+      if (contexts.isNotEmpty) {
+        _diaryContexts.addAll(contexts);
+      }
       print('contexts: $_diaryContexts');
       final summary = await _geminiServiceSummary.sendMessageWithDiaryEntry('user text: $text', _chatHistory, _diaryContexts);
+      
+      // Limit chat history to the most recent 20 entries to manage token usage
+      const maxHistory = 10;
+      if (_chatHistory.length > maxHistory) {
+        _chatHistory = _chatHistory.sublist(_chatHistory.length - maxHistory);
+      }
 
       setState(() {
         _messages.add(_ChatMessage(role: _Role.ai, text: summary));
