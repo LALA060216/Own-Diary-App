@@ -22,6 +22,11 @@ List<List<int>> mood = [[0,0], [0,0]];
 List<Map<String, int>> attentionData = [{},{}];
 TextEditingController previousDiaryController = TextEditingController();
 
+void clearMoodAndAttentionState() {
+  mood = [[0,0], [0,0]];
+  attentionData = [{},{}];
+}
+
 class Homepage extends StatefulWidget {
   const Homepage({super.key});
 
@@ -37,8 +42,8 @@ class _HomepageState extends State<Homepage> with RouteAware{
 
   List<String> imageUrls = [];
   String? diaryId = '';
-  bool isLoading = false;
-  bool isloadingAttention = false;
+  List<bool> moodLoading = [false, false];
+  List<bool> attentionLoading = [false, false];
   DateTime now = DateTime.now();
 
   static const _moodTitleStyle = TextStyle(
@@ -54,14 +59,16 @@ class _HomepageState extends State<Homepage> with RouteAware{
     super.initState();
     print('Initializing HomePage, hasLoadedInitial=$hasLoadedInitial');
     _checkNewestDiary(requiredReload: hasLoadedInitial);
-    _getStreak();
+    
     if (!hasLoadedInitial){
-      if (now.weekday == DateTime.monday) {
-        _updateWeeklyMoodAndAttention(requestAi: true);
-      } else {
-        _updateWeeklyMoodAndAttention(requestAi: false);
-      }
-      hasLoadedInitial = true;
+      _getStreak().then((streakDate) {
+        if (now.weekday == DateTime.friday && !DateUtils.isSameDay(streakDate, now)) {
+          _updateWeeklyMoodAndAttention(requestAi: true);
+        } else {
+          _updateWeeklyMoodAndAttention(requestAi: false);
+        }
+        hasLoadedInitial = true;
+      });
     }
   }
 
@@ -92,13 +99,12 @@ class _HomepageState extends State<Homepage> with RouteAware{
     if (createdNewDiaryToday && requiredReload) {
       _didUpdatedDiary(newestDiary).then((updated) {
       if (updated) {
-          print('hih');
           _updateDailyMoodAndAttention(requestAi: true);
         } else {
           if (mounted) {
             setState(() {
-              isLoading = false;
-              isloadingAttention = false;
+              moodLoading[0] = false;
+              attentionLoading[0] = false;
             });
           }
         }
@@ -108,8 +114,8 @@ class _HomepageState extends State<Homepage> with RouteAware{
     } else if (!createdNewDiaryToday) {
       if (mounted) {
         setState(() {
-          isLoading = false;
-          isloadingAttention = false;
+          moodLoading[0] = false;
+          attentionLoading[0] = false;
         });
       }
     }
@@ -117,20 +123,22 @@ class _HomepageState extends State<Homepage> with RouteAware{
 
   Future<String> _getDiaryContext(String contextType) async {
     if (contextType == 'daily') {
-      final newestDiary = await firestoreService.getNewestDiaryDetail(userId);
-      return newestDiary?.context ?? '';
+      return await firestoreService.getUserDiaryContextToday(userId);
     } else if (contextType == 'weekly') {
       return await firestoreService.getUserDiaryContextPastWeek(userId);
     }
     return '';
   }
 
-  Future<void> _getStreak() async {
+  Future<DateTime> _getStreak() async {
     final value = await firestoreService.getUserStreak(userId);
-    if (!mounted) return;
+    final streakDate = await firestoreService.getUserLastPostDate(userId) ?? DateTime.now();
+
+    if (!mounted) return streakDate;
     setState(() {
       streak = value.toString();
     });
+    return streakDate;
   }
 
   Future<bool> _didUpdatedDiary(DiaryEntryModel? newestDiary) async {
@@ -149,7 +157,7 @@ class _HomepageState extends State<Homepage> with RouteAware{
     
     if (!mounted) return;
     setState(() {
-      isLoading = true;
+      moodLoading[analyseIndexMood] = true;
     });
     
     if (requestAi) {
@@ -161,7 +169,7 @@ class _HomepageState extends State<Homepage> with RouteAware{
           if (match == null) {
             if (!mounted) return;
             setState(() {
-              isLoading = false;
+              moodLoading[analyseIndexMood] = false;
               mood[analyseIndexMood] = [0, 0];
             });
             return;
@@ -174,7 +182,7 @@ class _HomepageState extends State<Homepage> with RouteAware{
 
           if (!mounted) return;
           setState(() {
-            isLoading = false;
+            moodLoading[analyseIndexMood] = false;
             mood[analyseIndexMood] = [healthIndex, emotionIndex];
           });
 
@@ -187,7 +195,7 @@ class _HomepageState extends State<Homepage> with RouteAware{
         } catch (e) {
           if (!mounted) return;
           setState(() {
-            isLoading = false;
+            moodLoading[analyseIndexMood] = false;
             mood[analyseIndexMood] = [0, 0];
           });
         }
@@ -205,14 +213,14 @@ class _HomepageState extends State<Homepage> with RouteAware{
             
             if (!mounted) return;
             setState(() {
-              isLoading = false;
+              moodLoading[analyseIndexMood] = false;
               mood[analyseIndexMood] = [healthIndex, emotionIndex];
             });
           }
         } else {
           if (!mounted) return;
           setState(() {
-            isLoading = false;
+            moodLoading[analyseIndexMood] = false;
             mood[analyseIndexMood] = [0, 0];
           });
         }
@@ -220,7 +228,7 @@ class _HomepageState extends State<Homepage> with RouteAware{
         print('Error loading stored mood: $e');
         if (!mounted) return;
         setState(() {
-          isLoading = false;
+          moodLoading[analyseIndexMood] = false;
           mood[analyseIndexMood] = [0, 0];
         });
       }
@@ -232,11 +240,10 @@ class _HomepageState extends State<Homepage> with RouteAware{
 
     if (!mounted) return;
     setState(() {
-      isloadingAttention = true;
+      attentionLoading[analyseIndexAttention] = true;
     });
     
     if (requestAi) {
-      print('Requesting AI analysis for attention with context: $context');
       await GeminiService(chatModel: _attentionModel).getAttentionAnalysis(context).then((value) {
         print(value);
         try {
@@ -254,21 +261,11 @@ class _HomepageState extends State<Homepage> with RouteAware{
               parsedData[key] = value is int ? value : int.tryParse(value.toString()) ?? 0;
             });
           } catch (jsonError) {
-            String cleaned = cleanedValue.replaceAll(RegExp(r'[{}]'), '').trim();
-            List<String> pairs = cleaned.split(',');
-
-            for (String pair in pairs) {
-              List<String> keyValue = pair.split(':');
-              if (keyValue.length == 2) {
-                String key = keyValue[0].trim().replaceAll('"', '');
-                int val = int.tryParse(keyValue[1].trim()) ?? 0;
-                parsedData[key] = val;
-              }
-            }
+            print('Error parsing JSON directly: $jsonError');
           }
           if (!mounted) return;
           setState(() {
-            isloadingAttention = false;
+            attentionLoading[analyseIndexAttention] = false;
             attentionData[analyseIndexAttention] = parsedData;
           });
 
@@ -283,7 +280,7 @@ class _HomepageState extends State<Homepage> with RouteAware{
           print("Response was: $value");
           if (!mounted) return;
           setState(() {
-            isloadingAttention = false;
+            attentionLoading[analyseIndexAttention] = false;
             attentionData[analyseIndexAttention] = {};
           });
         }
@@ -307,13 +304,13 @@ class _HomepageState extends State<Homepage> with RouteAware{
           }
           if (!mounted) return;
           setState(() {
-            isloadingAttention = false;
+            attentionLoading[analyseIndexAttention] = false;
             attentionData[analyseIndexAttention] = parsedData;
           });
         } else {
           if (!mounted) return;
           setState(() {
-            isloadingAttention = false;
+            attentionLoading[analyseIndexAttention] = false;
             attentionData[analyseIndexAttention] = {};
           });
         }
@@ -321,7 +318,7 @@ class _HomepageState extends State<Homepage> with RouteAware{
         print('Error loading stored attention: $e');
         if (!mounted) return;
         setState(() {
-          isloadingAttention = false;
+          attentionLoading[analyseIndexAttention] = false;
           attentionData[analyseIndexAttention] = {};
         });
       }
@@ -473,7 +470,7 @@ class _HomepageState extends State<Homepage> with RouteAware{
                                       ),
                                       SizedBox(width: 4),
                                       _rangeButton(
-                                        "1W",
+                                        "7D",
                                         isSelected: analyseIndex == 1,
                                         onPressed: () => {setState(() => analyseIndex = 1)},
                                       ),
@@ -487,7 +484,7 @@ class _HomepageState extends State<Homepage> with RouteAware{
                                 child: Text("This section will be updated at every Monday", style: TextStyle(fontSize: 12, color: Colors.black45))) : SizedBox(height: 20,),
                               moodBlocks(maxWidth, createdNewDiaryToday),
                               SizedBox(height: 20),
-                              if (isloadingAttention)
+                              if (attentionLoading[analyseIndex])
                                 CircularProgressIndicator()
                               else
                                 _buildAttentionChart(),
@@ -547,7 +544,7 @@ class _HomepageState extends State<Homepage> with RouteAware{
                       borderRadius: BorderRadius.circular(30),
                       child: Container(
                         padding: EdgeInsets.all(8),
-                        child: isLoading ? Center(child: CircularProgressIndicator(color: Colors.white)) : Column(
+                        child: moodLoading[analyseIndex] ? Center(child: CircularProgressIndicator(color: Colors.white)) : Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             FaIcon((createdNewDiaryToday && analyseIndex == 0) || (analyseIndex == 1 && attentionData[1].isNotEmpty) ? healthIcons[mood[analyseIndex][0]] : Icons.question_mark, color: const Color.fromARGB(255, 255, 255, 255), size: maxWidth * 0.15), 
@@ -579,7 +576,7 @@ class _HomepageState extends State<Homepage> with RouteAware{
                       borderRadius: BorderRadius.circular(30),
                       child: Container(
                         padding: EdgeInsets.all(8),
-                        child: isLoading ? Center(child: CircularProgressIndicator(color: Colors.white)) : Column(
+                        child: moodLoading[analyseIndex] ? Center(child: CircularProgressIndicator(color: Colors.white)) : Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             FaIcon((createdNewDiaryToday && analyseIndex == 0) || (analyseIndex == 1 && attentionData[1].isNotEmpty) ? emotionIcons[mood[analyseIndex][1]] : Icons.question_mark, color: const Color.fromARGB(255, 255, 255, 255), size: maxWidth * 0.15), 
@@ -630,8 +627,15 @@ class _HomepageState extends State<Homepage> with RouteAware{
   }
 
   Widget _buildAttentionChart(){
-    if (attentionData.length <= analyseIndex || attentionData[analyseIndex] == {'Error': 0}) {
+    if (attentionData.length <= analyseIndex) {
       return SizedBox.shrink();
+    }
+
+    if (attentionData[analyseIndex].containsKey("Error")) {
+      if (!mounted) return SizedBox.shrink();
+      setState(() {
+        attentionData[analyseIndex] = {};
+      });
     }
     // More vibrant and appealing colors
     List<Color> chartColors = [
@@ -649,7 +653,7 @@ class _HomepageState extends State<Homepage> with RouteAware{
     List<PieChartSectionData> sections = [];
     List<MapEntry<String, int>> sortedAttentionData = {'No Data': 100}.entries.toList();
     // sort attentionData by value in descending order 
-    if ((!createdNewDiaryToday) || (analyseIndex == 0 && attentionData[0].isEmpty) || (analyseIndex == 1 && attentionData[1].isEmpty)) {
+    if ((analyseIndex == 0 && attentionData[0].isEmpty) || (analyseIndex == 1 && attentionData[1].isEmpty)) {
       sections = [
         PieChartSectionData(
           value: 100,
@@ -727,7 +731,7 @@ class _HomepageState extends State<Homepage> with RouteAware{
                 final color = chartColors[index % chartColors.length];
 
                 return Container(
-                  padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  padding: EdgeInsets.symmetric(horizontal: 8, vertical: 8),
                   decoration: BoxDecoration(
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(10),
@@ -752,12 +756,15 @@ class _HomepageState extends State<Homepage> with RouteAware{
                         ),
                       ),
                       SizedBox(width: 10),
-                      Text(
-                        data.key,
-                        style: TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.black87,
+                      Flexible(
+                        child: Text(
+                          data.key,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 8,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.black87,
+                          ),
                         ),
                       ),
                       SizedBox(width: 8),

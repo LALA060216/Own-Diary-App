@@ -3,6 +3,7 @@ import 'package:diaryapp/services/auth/pages/welcome_page.dart';
 import 'package:flutter/material.dart';
 import 'settings/models/settings_model.dart';
 import 'ai_summary.dart';
+import 'package:diaryapp/pages/home_page/home_page.dart';
 
 class SettingPage extends StatelessWidget{
   SettingPage({super.key});
@@ -54,6 +55,7 @@ class SettingPage extends StatelessWidget{
                       final selected = settingOption[index];
                       if (selected.name == 'Logout') {
                         clearAiChatState();
+                        clearMoodAndAttentionState();
                         await authService.value.signOut();
                         if (!context.mounted) return;
                         Navigator.of(context).pushAndRemoveUntil(

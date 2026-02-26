@@ -10,6 +10,7 @@ IMPORTANT RULES:
 3. DO NOT extract people names - use their relationship instead (e.g., "mom" instead of "Sarah")
 4. Values are percentages (integers) that must sum to exactly 100
 5. Include 2-5 topics maximum, based on what the diary entry emphasizes
+6. Do not extract more than 20 alphabet characters for each topic - be concise and specific
 
 EXAMPLES:
 - Diary: "Had a great day with family, went to the gym, then did some work emails" -> {"family": 40, "exercise": 30, "work": 30}

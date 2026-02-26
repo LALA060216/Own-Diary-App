@@ -531,12 +531,12 @@ class FirestoreService {
     }
   }
 
-  Future<String> getUserDiaryContextPastMonth(String userId) async {
+  Future<String> getUserDiaryContextToday(String userId) async {
     try {
-      final oneMonthAgo = DateTime.now().subtract(Duration(days: 30));
+      final today = DateTime.now().startOfDay;
       final snapshot = await diaryEntriesCollection
         .where('userId', isEqualTo: userId)
-        .where('created', isGreaterThanOrEqualTo: Timestamp.fromDate(oneMonthAgo))
+        .where('created', isGreaterThanOrEqualTo: Timestamp.fromDate(today))
         .orderBy('created', descending: true)
         .get();
 
@@ -667,6 +667,10 @@ Future<void> removeProfilePhoto(String uid) async {
 }
 
 
+}
+
+extension on DateTime {
+   get startOfDay => DateTime(year, month, day);
 }
 
 
