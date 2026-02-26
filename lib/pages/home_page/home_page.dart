@@ -781,8 +781,8 @@ class _HomepageState extends State<Homepage> with RouteAware{
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Icon(
-                Icons.add,
-                size: 60,
+                text == 'New Diary' ? Icons.add : Icons.edit,
+                size: text == 'New Diary' ? 60 : 50,
               ),
               Text(
                 text,
