@@ -121,7 +121,7 @@ class _ASummaryPageState extends State<AISummaryPage> {
     super.initState();
     // Initialize AIChatModel
     final chatModelKeyWord = AIChatModel(
-      prompt: 'You are a keyword matching assistant./nSelect 0 to 10 keywords that are most related to the user input text./nOnly choose keywords from the provided keyword list\nPrioritize semantic similarity, not exact matches./nIgnore unrelated keywords./nIf nothing is relevant, return []./nReturn ONLY a JSON array of strings with no extra text.',
+      prompt: 'You are a keyword matching assistant./nSelect less than 20 keywords that are most related to the user input text./nOnly choose keywords from the provided keyword list\nPrioritize semantic similarity, not exact matches./nIgnore unrelated keywords./nIf nothing is relevant, return []./nIf user ask to summary or similar task for all for diary written or related some date, return involving the date and keywords given in keywords (priorities the date).\nReturn ONLY a JSON array of strings with no extra text.',
       model: 'gemini-2.5-flash'
     );
     final chatModelSummary = AIChatModel(

@@ -603,7 +603,13 @@ class _NewDiaryState extends State<NewDiary> {
           List<dynamic> keywordList = jsonDecode(keywords);
           List<String> parsedKeywords = keywordList.map((k) => k.toString().trim()).toList();
           parsedKeywords.add(titleAtDispose);
-          parsedKeywords.add('Date: ${DateFormat('yyyy-MM-dd').format(DateTime.now())}');
+          final DateTime? createdDate = await _firestoreService.getDiaryEntryCreatedDate(entryIdAtDispose);
+          if (widget.diaryId != null) {
+            parsedKeywords.insert(0, 'Date: ${DateFormat('yyyy-MM-dd').format(createdDate!)}');
+          } else {
+            parsedKeywords.insert(0, 'Date: ${DateFormat('yyyy-MM-dd').format(DateTime.now())}');
+          }
+        
           
           await _firestoreService.updateDiaryEntryKeywords(
             entryId: entryIdAtDispose,

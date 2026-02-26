@@ -468,6 +468,19 @@ class FirestoreService {
     }
   }
 
+  Future<DateTime?> getDiaryEntryCreatedDate(String entryId) async {
+    try {
+      final doc = await diaryEntriesCollection.doc(entryId).get();
+      if (doc.exists) {
+        final diaryEntry = DiaryEntryModel.fromFirestore(doc);
+        return diaryEntry.created;
+      }
+      return null;
+    } catch (e) {
+      rethrow;
+    }
+  }
+
   Future<String> getAllDiaryTitle() async {
     final uid = FirebaseAuth.instance.currentUser!.uid;
     final snapshot = await FirebaseFirestore.instance
