@@ -9,6 +9,7 @@ import '../services/firestore_service.dart';
 import '../services/models/diary_entry_model.dart';
 import '../services/models/moments_model.dart';
 import 'details_diary.dart';
+import 'home_page/home_page.dart';
 
 class _MomentCategory {
   final String key;
@@ -684,6 +685,38 @@ class _DiariesState extends State<Diaries> {
     return null;
   }
 
+  Future<void> _refreshTodaysMoodAndAttention() async {
+    try {
+      // Check if there are any diary entries from today
+      final todaysDiaries = _allDiaries.where((diary) => 
+        DateUtils.isSameDay(diary.created, DateTime.now())
+      ).toList();
+      
+      if (todaysDiaries.isEmpty) {
+        // If no diaries from today, only clear daily (1D) mood and attention
+        // Do NOT clear weekly (7D) data - it should persist independently
+        createdNewDiaryToday = false;
+        
+        // Clear only the daily mood and attention from Firestore
+        if (userId != null) {
+          await firestoreService.updateDailyMood(userId!, '');
+          await firestoreService.updateDailyAttention(userId!, '');
+        }
+      } else {
+        // If there are still diaries from today, mark as created today
+        createdNewDiaryToday = true;
+        // The mood and attention will be recalculated when user returns to home page
+        // by the _updateDailyMoodAndAttention() method based on remaining entries
+      }
+      
+      if (mounted) {
+        setState(() {});
+      }
+    } catch (e) {
+      print('Error refreshing today\'s mood and attention: $e');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     if (userId == null || diaryStream == null) {
@@ -1112,8 +1145,17 @@ Future<bool?> showDeleteConfirmationDialog(BuildContext context) {
                                       onPressed: () async {
                                         final bool? confirm = await showDeleteConfirmationDialog(context);
                                         if (confirm == true) {
+                                          final bool isDiaryFromToday = DateUtils.isSameDay(diary.created, DateTime.now());
+                                          
                                           await firestoreService.deleteDiaryEntry(diary.id, userId!);
                                           await firestoreService.deleteMomentsForDiary(diary.id);
+                                          
+                                          if (isDiaryFromToday) {
+                                            await _refreshTodaysMoodAndAttention();
+                                            if (onDiaryChangedToday != null) {
+                                              unawaited(onDiaryChangedToday!());
+                                            }
+                                          }
                                         }
                                       },
                                     ),

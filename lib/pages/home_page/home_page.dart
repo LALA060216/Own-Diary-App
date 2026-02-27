@@ -22,11 +22,13 @@ List<List<int>> mood = [[0,0], [0,0]];
 List<Map<String, int>> attentionData = [{},{}];
 TextEditingController previousDiaryController = TextEditingController();
 
+typedef Future<void> DiaryChangedCallback();
+DiaryChangedCallback? onDiaryChangedToday;
+
 void clearMoodAndAttentionState() {
   mood = [[0,0], [0,0]];
   attentionData = [{},{}];
 }
-
 class Homepage extends StatefulWidget {
   const Homepage({super.key});
 
@@ -39,6 +41,11 @@ class _HomepageState extends State<Homepage> with RouteAware{
   late final String userId = FirebaseAuth.instance.currentUser!.uid;
   late final AIChatModel _moodModel = AIChatModel(prompt: promptForMood, model: 'gemini-2.5-flash');
   late final AIChatModel _attentionModel = AIChatModel(prompt: promptForAnalyse, model: 'gemini-2.5-flash');
+
+  static final RegExp _moodRegex = RegExp(r'^\s*(\d+)\s+(\d+)\s*$');
+  static final RegExp _jsonMarkdownRegex1 = RegExp(r'```json\s*');
+  static final RegExp _jsonMarkdownRegex2 = RegExp(r'```\s*');
+  static final RegExp _bracesRegex = RegExp(r'[{}]');
 
   List<String> imageUrls = [];
   String? diaryId = '';
@@ -57,8 +64,9 @@ class _HomepageState extends State<Homepage> with RouteAware{
   @override
   void initState() {
     super.initState();
-    print('Initializing HomePage, hasLoadedInitial=$hasLoadedInitial');
     _checkNewestDiary(requiredReload: hasLoadedInitial);
+    
+    onDiaryChangedToday = _refreshWhenDiaryChanged;
     
     if (!hasLoadedInitial){
       _getStreak().then((streakDate) {
@@ -116,6 +124,10 @@ class _HomepageState extends State<Homepage> with RouteAware{
         setState(() {
           moodLoading[0] = false;
           attentionLoading[0] = false;
+          if (analyseIndex == 0) {
+            mood[0] = [0, 0];
+            attentionData[0] = {};
+          }
         });
       }
     }
@@ -142,8 +154,8 @@ class _HomepageState extends State<Homepage> with RouteAware{
   }
 
   Future<bool> _didUpdatedDiary(DiaryEntryModel? newestDiary) async {
-    String newestContext = newestDiary?.context ?? '';
-    List<String> newestImageUrls = newestDiary?.imageUrls != null ? List<String>.from(newestDiary!.imageUrls) : [];
+    final newestContext = newestDiary?.context ?? '';
+    final newestImageUrls = newestDiary?.imageUrls ?? const <String>[];
     if (newestContext != oldDiaryContext || !listEquals(newestImageUrls, imageUrls)) {
       oldDiaryContext = newestContext;
       imageUrls = newestImageUrls;
@@ -161,10 +173,9 @@ class _HomepageState extends State<Homepage> with RouteAware{
     });
     
     if (requestAi) {
-      print('Requesting AI analysis for mood with context: $context');
       await GeminiService(chatModel: _moodModel).getMoodAnalysis(context).then((value) {
         try {
-          final match = RegExp(r'^\s*(\d+)\s+(\d+)\s*$').firstMatch(value);
+          final match = _moodRegex.firstMatch(value);
 
           if (match == null) {
             if (!mounted) return;
@@ -245,14 +256,13 @@ class _HomepageState extends State<Homepage> with RouteAware{
     
     if (requestAi) {
       await GeminiService(chatModel: _attentionModel).getAttentionAnalysis(context).then((value) {
-        print(value);
         try {
           Map<String, int> parsedData = {};
           String cleanedValue = value.trim();
           if (cleanedValue.startsWith('```')) {
             cleanedValue = cleanedValue
-                .replaceAll(RegExp(r'```json\s*'), '')
-                .replaceAll(RegExp(r'```\s*'), '')
+                .replaceAll(_jsonMarkdownRegex1, '')
+                .replaceAll(_jsonMarkdownRegex2, '')
                 .trim();
           }
           try {
@@ -261,7 +271,7 @@ class _HomepageState extends State<Homepage> with RouteAware{
               parsedData[key] = value is int ? value : int.tryParse(value.toString()) ?? 0;
             });
           } catch (jsonError) {
-            print('Error parsing JSON directly: $jsonError');
+            // Silent fail on JSON parse error
           }
           if (!mounted) return;
           setState(() {
@@ -276,8 +286,7 @@ class _HomepageState extends State<Homepage> with RouteAware{
           }
 
         } catch (e) {
-          print("Error decoding attention analysis: $e");
-          print("Response was: $value");
+          // Silent fail on parsing error
           if (!mounted) return;
           setState(() {
             attentionLoading[analyseIndexAttention] = false;
@@ -291,8 +300,8 @@ class _HomepageState extends State<Homepage> with RouteAware{
         if (storedAttention.isNotEmpty){
           Map<String, int> parsedData = {};
           String cleanedValue = storedAttention.trim();
-          String cleaned = cleanedValue.replaceAll(RegExp(r'[{}]'), '').trim();
-          List<String> pairs = cleaned.split(',');
+          String cleaned = cleanedValue.replaceAll(_bracesRegex, '').trim();
+          final pairs = cleaned.split(',');
 
           for (String pair in pairs) {
             List<String> keyValue = pair.split(':');
@@ -315,7 +324,6 @@ class _HomepageState extends State<Homepage> with RouteAware{
           });
         }
       } catch (e) {
-        print('Error loading stored attention: $e');
         if (!mounted) return;
         setState(() {
           attentionLoading[analyseIndexAttention] = false;
@@ -334,7 +342,7 @@ class _HomepageState extends State<Homepage> with RouteAware{
         _refreshAttention(context, index: 1, requestAi: requestAi),
       ]);
     } catch (e) {
-      print('Error updating weekly mood and attention: $e');
+      // Silent fail
     }
   }
 
@@ -348,10 +356,14 @@ class _HomepageState extends State<Homepage> with RouteAware{
         _refreshAttention(context, index: 0, requestAi: requestAi),
       ]);
     } catch (e) {
-      print('Error updating daily mood and attention: $e');
+      // Silent fail
     }
   }
 
+  Future<void> _refreshWhenDiaryChanged() async {
+    // Callback triggered when diary is created or deleted today
+    await _checkNewestDiary(requiredReload: true);
+  }
 
   @override
   Widget build(BuildContext context) {

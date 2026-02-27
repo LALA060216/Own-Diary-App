@@ -15,6 +15,7 @@ import 'package:diaryapp/pages/moments/moments.dart';
 
 import 'ai_content_options_dialog.dart';
 import 'full_screen_image_page.dart';
+import 'home_page/home_page.dart';
 
 class NewDiary extends StatefulWidget{
   final XFile? imageFile;
@@ -64,8 +65,8 @@ class _NewDiaryState extends State<NewDiary> {
       prompt: 'Generate one short diary title based on the diary content. Keep it natural, specific, and between 3 to 8 words. Return ONLY the title text without quotes, labels, markdown, or extra explanation.',
       model: 'gemini-2.5-flash-lite'
     );
-
   Timer? _titleDebounceTimer;
+  Timer? _diaryDebounceTimer;
   bool _isGeneratingTitle = false;
   bool _isGeneratingDiaryContent = false;
   bool _isApplyingAiTitle = false;
@@ -126,7 +127,14 @@ class _NewDiaryState extends State<NewDiary> {
         }
         _scheduleAiTitleGeneration();
         await waitDiaryCreate();
-        await aupdateDiary(_diaryController.text);
+        
+        // Debounce diary update to prevent lag from rapid Firestore calls
+        _diaryDebounceTimer?.cancel();
+        _diaryDebounceTimer = Timer(const Duration(milliseconds: 500), () {
+          if (!_isDisposed) {
+            aupdateDiary(_diaryController.text);
+          }
+        });
       } catch (_) {
         // Ignore listener-driven transient failures.
       }
@@ -308,6 +316,12 @@ class _NewDiaryState extends State<NewDiary> {
         date: date,
       );
       await _firestoreService.updateStreak(_userId, DateTime.now());
+      
+      if (DateUtils.isSameDay(date, DateTime.now())) {
+        if (onDiaryChangedToday != null) {
+          unawaited(onDiaryChangedToday!());
+        }
+      }
     } catch (e) {
       error = true;
       rethrow;
@@ -579,6 +593,7 @@ class _NewDiaryState extends State<NewDiary> {
     }
     // Generate title in background without touching disposed controllers
     _titleDebounceTimer?.cancel();
+    _diaryDebounceTimer?.cancel();
     if (!_isTitleManuallyEdited && diaryTextAtDispose.length >= 20 && titleAtDispose.isEmpty) {
       GeminiService(chatModel: titleChatModel).sendMessage(diaryTextAtDispose).then((generated) async {
         final title = _sanitizeGeneratedTitle(generated);
