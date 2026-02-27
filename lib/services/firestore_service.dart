@@ -562,8 +562,9 @@ class FirestoreService {
 
   /// Delete a diary entry
   Future<void> deleteDiaryEntry(String entryId, String userId) async {
-    final DiaryEntryModel? entry = await diaryEntriesCollection.doc(entryId).get().then((doc) => DiaryEntryModel.fromFirestore(doc));
     try {
+      final doc = await diaryEntriesCollection.doc(entryId).get();
+      final DiaryEntryModel? entry = doc.exists ? DiaryEntryModel.fromFirestore(doc) : null;
       await diaryEntriesCollection.doc(entryId).delete();
       await decrementDiaryPostCount(userId);
       if (entry != null && entry.imageUrls.isNotEmpty) {
