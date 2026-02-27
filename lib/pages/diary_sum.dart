@@ -555,28 +555,13 @@ class _DiariesState extends State<Diaries> {
       for (final diary in _allDiaries) diary.id: diary,
     };
 
-    final imageIndexQueuesByDiary = <String, Map<String, List<int>>>{};
-    Map<String, List<int>> buildImageQueues(List<String> imageUrls) {
-      final queues = <String, List<int>>{};
-      for (var i = 0; i < imageUrls.length; i++) {
-        final url = imageUrls[i];
-        queues.putIfAbsent(url, () => <int>[]).add(i);
-      }
-      return queues;
-    }
-
     for (final moment in _allMoments) {
       final diary = diaryById[moment.diaryId];
       if (diary == null) continue;
-
-      // Find the next matching image index in order to handle duplicate URLs
-      final imageQueues = imageIndexQueuesByDiary.putIfAbsent(
-        diary.id,
-        () => buildImageQueues(diary.imageUrls),
-      );
-      final indices = imageQueues[moment.imageUrl];
-      if (indices == null || indices.isEmpty) continue;
-      final imageIndex = indices.removeAt(0);
+      
+      // Find the image index in the diary's imageUrls list
+      final imageIndex = diary.imageUrls.indexOf(moment.imageUrl);
+      if (imageIndex == -1) continue;
       
       // Skip if moments is empty
       if (moment.moments.trim().isEmpty) continue;
@@ -710,11 +695,18 @@ class _DiariesState extends State<Diaries> {
       if (todaysDiaries.isEmpty) {
         // If no diaries from today, only clear daily (1D) mood and attention
         // Do NOT clear weekly (7D) data - it should persist independently
+        createdNewDiaryToday = false;
+        
         // Clear only the daily mood and attention from Firestore
         if (userId != null) {
           await firestoreService.updateDailyMood(userId!, '');
           await firestoreService.updateDailyAttention(userId!, '');
         }
+      } else {
+        // If there are still diaries from today, mark as created today
+        createdNewDiaryToday = true;
+        // The mood and attention will be recalculated when user returns to home page
+        // by the _updateDailyMoodAndAttention() method based on remaining entries
       }
       
       if (mounted) {
@@ -1161,7 +1153,7 @@ Future<bool?> showDeleteConfirmationDialog(BuildContext context) {
                                           if (isDiaryFromToday) {
                                             await _refreshTodaysMoodAndAttention();
                                             if (onDiaryChangedToday != null) {
-                                              await onDiaryChangedToday!();
+                                              unawaited(onDiaryChangedToday!());
                                             }
                                           }
                                         }
