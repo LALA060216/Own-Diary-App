@@ -57,14 +57,16 @@ class _ASummaryPageState extends State<AISummaryPage> {
 
     final querySnapshot = await query.get();
 
+    final seenIds = <String>{};
     List<String> allContexts = [];
     for (var doc in querySnapshot.docs) {
+      if (!seenIds.add(doc.id)) continue;
       String context = doc['context'] ?? '';
       Timestamp? timestamp = doc['created'];
       String title = doc['title'];
       if (timestamp != null) {
         DateTime date = timestamp.toDate();
-        allContexts.add('date: ${DateFormat('yyyy-MM-dd').format(date)}\nDiary title: $title \nDiary: $context');
+        allContexts.add('\ndate: ${DateFormat('yyyy-MM-dd').format(date)}\nDiary title: $title \nDiary: $context');
       }
     }
     allContexts.add('Date Today: ${DateFormat('yyyy-MM-dd').format(DateTime.now())}');
