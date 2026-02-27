@@ -494,6 +494,9 @@ class _DiariesState extends State<Diaries> {
   List<DiaryEntryModel> _allDiaries = [];
   List<MomentsModel> _allMoments = [];
 
+  static final Set<String> _precachedUrls = {};
+  bool _precacheScheduled = false;
+
   void _safeSetState(VoidCallback fn) {
     if (!mounted) return;
     final phase = SchedulerBinding.instance.schedulerPhase;
@@ -504,6 +507,36 @@ class _DiariesState extends State<Diaries> {
       });
     } else {
       setState(fn);
+    }
+  }
+
+  void _schedulePrecache() {
+    if (_precacheScheduled) return;
+    _precacheScheduled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _precacheScheduled = false;
+      _precacheMomentImages();
+    });
+  }
+
+  void _precacheMomentImages() {
+    if (!mounted) return;
+    final diaryById = <String, DiaryEntryModel>{
+      for (final diary in _allDiaries) diary.id: diary,
+    };
+    for (final moment in _allMoments) {
+      final diary = diaryById[moment.diaryId];
+      if (diary == null) continue;
+      if (moment.moments.trim().isEmpty) continue;
+      if (!diary.imageUrls.contains(moment.imageUrl)) continue;
+      final url = moment.imageUrl;
+      if (_isNetworkUrl(url) && !_precachedUrls.contains(url)) {
+        _precachedUrls.add(url);
+        precacheImage(NetworkImage(url), context).catchError((_) {
+          _precachedUrls.remove(url);
+          return;
+        });
+      }
     }
   }
 
@@ -523,6 +556,7 @@ class _DiariesState extends State<Diaries> {
         _safeSetState(() {
           _allDiaries = entries;
         });
+        _schedulePrecache();
       }, onError: (_) {
         if (!mounted) return;
         _safeSetState(() {
@@ -535,6 +569,7 @@ class _DiariesState extends State<Diaries> {
         _safeSetState(() {
           _allMoments = moments;
         });
+        _schedulePrecache();
       }, onError: (_) {
         if (!mounted) return;
         _safeSetState(() {
@@ -1117,7 +1152,6 @@ Future<bool?> showDeleteConfirmationDialog(BuildContext context) {
                         // Material provides the surface for the ripple
                         color: Colors.white,
                         child: InkWell(
-                          borderRadius: BorderRadius.circular(12),
                           splashColor: Theme.of(context).primaryColor.withValues(alpha: 0.2),
                           highlightColor: Theme.of(context).primaryColor.withValues(alpha: 0.1),
                           onTap: () {

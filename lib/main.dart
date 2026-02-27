@@ -19,6 +19,10 @@ void main() async {
     print('Firebase initialization error: $e');
   }
   
+  // Keep moment images in cache across page navigations
+  PaintingBinding.instance.imageCache.maximumSizeBytes = 300 * 1024 * 1024; // 300 MB
+  PaintingBinding.instance.imageCache.maximumSize = 2000; // 2000 images
+
   runApp(const MyApp());
 }
 
