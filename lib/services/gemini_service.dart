@@ -5,15 +5,23 @@ import 'dart:typed_data';
 import 'package:http/http.dart' as http;
 import 'package:image/image.dart' as img;
 import 'models/ai_chat_model.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class GeminiService {
   final AIChatModel _chatModel;
 
   GeminiService({required AIChatModel chatModel}) : _chatModel = chatModel;
 
-  // ---------------------------------------------------------------------------
-  // Static constants & helpers
-  // ---------------------------------------------------------------------------
+  /// Returns a fresh ID token for the currently signed-in user.
+  /// Throws a [StateError] if no user is signed in.
+  Future<String> _getIdToken() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) throw StateError('No authenticated user');
+    return await user.getIdToken() ?? '';
+  }
+
+
+
 
   static const String _cloudFunctionBaseUrl =
       'https://us-central1-diary-app-1c552.cloudfunctions.net';
@@ -116,7 +124,10 @@ class GeminiService {
         // Call Cloud Function with image data
         final response = await http.post(
           Uri.parse('$_cloudFunctionBaseUrl/classifyDiaryImage'),
-          headers: {'Content-Type': 'application/json'},
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer ${await _getIdToken()}',
+          },
           body: jsonEncode({
             'imageData': base64Image,
             'mimeType': 'image/jpeg',
@@ -156,7 +167,10 @@ class GeminiService {
     try {
       final response = await http.post(
         Uri.parse('$_cloudFunctionBaseUrl/chat'),
-        headers: {'Content-Type': 'application/json'},
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ${await _getIdToken()}',
+        },
         body: jsonEncode({
           'message': userMessage,
           'prompt': _chatModel.prompt,
@@ -183,7 +197,10 @@ class GeminiService {
     try {
       final response = await http.post(
         Uri.parse('$_cloudFunctionBaseUrl/chatWithHistory'),
-        headers: {'Content-Type': 'application/json'},
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ${await _getIdToken()}',
+        },
         body: jsonEncode({
           'message': userMessage,
           'history': history,
@@ -213,7 +230,10 @@ class GeminiService {
 
       final response = await http.post(
         Uri.parse('$_cloudFunctionBaseUrl/moodAnalysis'),
-        headers: {'Content-Type': 'application/json'},
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ${await _getIdToken()}',
+        },
         body: jsonEncode({
           'diaryEntry': trimmedEntry,
           'prompt': _chatModel.prompt,
@@ -242,7 +262,10 @@ class GeminiService {
 
       final response = await http.post(
         Uri.parse('$_cloudFunctionBaseUrl/attentionAnalysis'),
-        headers: {'Content-Type': 'application/json'},
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ${await _getIdToken()}',
+        },
         body: jsonEncode({
           'diaryEntry': trimmedEntry,
           'prompt': _chatModel.prompt,
@@ -272,7 +295,10 @@ class GeminiService {
     try {
       final response = await http.post(
         Uri.parse('$_cloudFunctionBaseUrl/chatWithDiaryEntry'),
-        headers: {'Content-Type': 'application/json'},
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ${await _getIdToken()}',
+        },
         body: jsonEncode({
           'message': userMessage,
           'previousMessage': previousMessage,

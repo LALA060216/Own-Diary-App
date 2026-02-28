@@ -38,6 +38,8 @@ class _ProfilePageState extends State<ProfilePage> {
       setState(() {
         currentUserModel = userModel;
       });
+    }, onError: (_) {
+      // Suppress permission errors on sign-out before dispose
     });
   }
 
