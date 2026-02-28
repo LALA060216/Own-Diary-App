@@ -31,10 +31,7 @@ Our AI-based diary mitigate this by combining diary with intelligent assistance.
 
 2. **Development Environment**
    - **Android Studio** with Flutter and Dart plugins installed
-   - Or **VS Code** with Flutter and Dart extensions
-
-3. **Firebase Account**
-   - Create a Firebase project at [Firebase Console](https://console.firebase.google.com/)
+   - **VS Code** with Flutter and Dart extensions
 
 ## Installation Steps
 
@@ -51,13 +48,13 @@ flutter pub get
 
 #### 3. Firebase Configuration
 
-1. In Firebase Console, create an Android app
+1. In [Firebase Console](https://console.firebase.google.com/), create an Android app
 2. Download `google-services.json`
 3. Place it in `android/app/` directory (already configured in this project)
 4. Enable the following Firebase services:
-   - **Authentication**: Enable Email/Password sign-in method
-   - **Cloud Firestore**: Create a database
-   - **Firebase Storage**: Set up storage bucket
+   - **Authentication**
+   - **Cloud Firestore**
+   - **Firebase Storage**
 
 
 ## Running the Project
