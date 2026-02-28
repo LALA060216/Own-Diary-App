@@ -3,20 +3,77 @@
 **Team:** The Gawk Team  
 **Description:** A digital journal platform powered by Generative AI. The Generative AI are designed serve user as their personal assistant. By analyzing daily diary entries, providing them their current health state, emotion state and his attention focus daily and weekly. Futhermore, it could also act as a searching engine for effortless event retrieval. Besides that, the Generative AI could also catetories user's journal and show it as moments to allow user to recall back.
 
----
+
 
 ## Project Description
 
 ### Summary of our project
 
 Our AI-based diary mitigate this by combining diary with intelligent assistance. Users are allowed to easily record daily experiences by attaching images or generating paragraphs with the help of our AI assistant. The solution is also designed to be inclusive for children and the elderly. AI assistant removes the need for writing skills, making diary writing simple and accessible for all age groups.
----
 
-## Demo Video Link
 
-[Our Demo Video](https://docs.flutter.dev/get-started/codelab)
+## Demo Video
 
----
+**[Our Demo Video](https://docs.flutter.dev/get-started/codelab)**
+
+## Download APK
+
+**[Download](https://github.com/LALA060216/Own-Diary-App/releases/tag/APP)**
+
+
+# Setup Instructions 
+
+## Prerequisites
+
+1. **Flutter SDK** (version 3.10.7 or higher)
+   - Download and install from [flutter.dev](https://docs.flutter.dev/get-started/install)
+   - Verify installation: `flutter doctor`
+
+2. **Development Environment**
+   - **Android Studio** with Flutter and Dart plugins installed
+   - Or **VS Code** with Flutter and Dart extensions
+
+3. **Firebase Account**
+   - Create a Firebase project at [Firebase Console](https://console.firebase.google.com/)
+
+## Installation Steps
+
+#### 1. Clone the Repository
+```bash
+git clone https://github.com/LALA060216/Own-Diary-App
+cd Own-Diary-App
+```
+
+#### 2. Install Flutter Dependencies
+```bash
+flutter pub get
+```
+
+#### 3. Firebase Configuration
+
+1. In Firebase Console, create an Android app
+2. Download `google-services.json`
+3. Place it in `android/app/` directory (already configured in this project)
+4. Enable the following Firebase services:
+   - **Authentication**: Enable Email/Password sign-in method
+   - **Cloud Firestore**: Create a database
+   - **Firebase Storage**: Set up storage bucket
+
+
+## Running the Project
+
+#### Development Mode
+```bash
+flutter run
+```
+### or
+#### Build Release APK
+```bash
+flutter build apk
+```
+
+The APK will be located at `build/app/outputs/flutter-apk/app-release.apk`
+
 
 ## Project Documentation
 
@@ -36,8 +93,16 @@ Storage stores uploaded images linked to diary entries. We structured it this wa
 - **AI Layer (Google Gemini via API & optional Cloud Functions/Cloud Run)**
 User inputs (text/images/context) are sent to Gemini for tasks like diary entry generation, mood analysis, health tracking, trend summaries, keyword extraction and personalized insights. A backend layer can sit between the app and Gemini to keep API keys secure, enforce permissions and log analytics safely.
 
-- **Architecture for Firestore Database**
+- **Architecture For Firestore Database** <br>
+  <img src = "resources\technical architecture\firestore_database_structure.png" width = "600" height = "300" > 
+  <br> <br>
+  <img src = "resources\technical architecture\firestore_database_workflow.png" width = "600" height = "300" >
 
+- **Architecture For Firebase Storage** <br>
+  <img src = "resources\technical architecture\upload_storage_workflow.png" width = "600" height = "300" >
+
+- **Architecture For AI to Generate Diary Context** <br>
+  <img src = "resources\technical architecture\generate_diary_workflow.png" width = "600" height = "300" >
 
 - **Architecture For Mood and Attention** <br>
   <img src = "resources\technical architecture\mood_and_attention_architecture.png" width = "600" height = "300" >
@@ -60,15 +125,16 @@ User inputs (text/images/context) are sent to Gemini for tasks like diary entry 
 
 - **Firebase Analytics:** We use Firebase Analytics to track user engagement, retention rates and feature usage. This helps us measure the effectiveness of AI-assisted journaling and overall app adoption.
 
-- **Google Gemini (via Google AI Studio API):** Gemini powers our AI assistant. We chose it because it provides strong natural language understanding and reasoning capabilities, enabling mood analysis, pattern detection and personalised life insights. We use it to extract keywords from user diary entries, generate user mood and attention daily and weekly, describe user uploaded image, label into a moment  search for which diary meets user's question best and also to give respone to user's questions.
+- **Google Gemini (via Google AI Studio API):** Gemini powers our AI assistant. We chose it because it provides strong natural language understanding and reasoning capabilities, enabling mood analysis, pattern detection and personalised life insights. We use it to extract keywords from user diary entries, generate user mood and attention daily and weekly, describe user uploaded image, label into a moment, search for which diary meets user's question best and also to give respone to user's questions.
 
 ### Challenges
 
-- One significant technical challenge we faced was debugging the new_diary.dart file. This file was complex because it connected multiple systems and files at once for example, Firebase Authentication, Cloud Firestire, Firebase Storage and all other files related to the diary. Since it handled diary creation, update, image uploads, deletion  and streak tracking, even a small mistake could break multiple functions and cause system down.
+- One significant technical challenge we faced was debugging the new_diary.dart file. This file was complex because it connected multiple systems and files at once for example, Firebase Authentication, Cloud Firestore, Firebase Storage and all other files related to the diary. Since it handled diary creation, update, image uploads, deletion  and streak tracking, even a small mistake could break multiple functions and cause system down.
 
 - The main issue involved streak calculation, creation and deletion of diary and empty diary handling. As we allow users to create multiple diaries per day, the streak logic had to ensure that streaks were updated correctly without being incremented multiple times on the same day. At the same time, if a user created an empty diary, it had to be automatically deleted to prevent false diary counts, incorrect streak updates and empty diary to be shown in the total diary page. 
 
-- Another critical issue we faced is when we are trying to let the AI chat system to search for a certian diary that is related to user's question. We need the AI model to know which diary to pick instead of simply read through every diary's context which will result in huge amount of waste tokens. So we optimize the token usage by extracting keywords from each user's diary and when user ask a question, it will go through each keywords and search for which diary's keywords highly match with user's question.  
+- Another critical issue we face is when we are trying to let the AI chat system to search for a certain diary that is related to the user's question. We need the AI model to know which diary to pick instead of simply reading through every diary's context which will result in huge amounts of waste tokens. So we optimize the token usage by extracting keywords from each user's diary and when the user asks a question, it will go through each keyword and search for which diary's keywords highly match with the user's question.
+ 
 
 ### Future roadmap
 - In the next phase of development, we plan to expand the system by introducing a deeper phone-level integration option. Instead of relying only on manual diary entries, the assistant will be able to integrate more naturally into the user’s smartphone environment (with user permission). This would allow the AI to understand daily patterns more seamlessly and provide smarter, tailored and context-aware insights. At the same time, we aim to solve the major concern for AI–based systems related to privacy and data safety. Therefore, our future direction includes solving the privacy and data safety challenge by shifting toward on-device AI processing. By integrating the AI directly into smartphones and keeping sensitive data stored locally rather than uploading it to cloud servers, we aim to significantly reduce the risk of data exposure and build stronger user trust. Another idea we are planing to acheive is when the AI analyse user's emotion is currently at negative, we wish the AI model would send a message to the user and giving him some advice to make the user feels better. 
