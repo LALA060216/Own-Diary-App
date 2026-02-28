@@ -14,7 +14,7 @@ Our AI-based diary mitigate this by combining diary with intelligent assistance.
 
 ## Demo Video
 
-**[Our Demo Video](https://docs.flutter.dev/get-started/codelab)**
+**[Our Demo Video](https://youtu.be/QBxEvI1uVFA?si=JWjdI8BlDI4JX6Ae)**
 
 ## Download APK
 
